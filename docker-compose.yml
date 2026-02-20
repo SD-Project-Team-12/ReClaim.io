@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4 
+    container_name: reclaim_db
+    environment:
+      POSTGRES_USER: reclaim_admin
+      POSTGRES_PASSWORD: YourSecurePassword123!
+      POSTGRES_DB: ReClaimDb
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: reclaim_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
