@@ -4,7 +4,7 @@ services:
     container_name: reclaim_db
     environment:
       POSTGRES_USER: reclaim_admin
-      POSTGRES_PASSWORD: YourSecurePassword123!
+      POSTGRES_PASSWORD: hehehihihoho!
       POSTGRES_DB: ReClaimDb
     ports:
       - "5433:5432"
