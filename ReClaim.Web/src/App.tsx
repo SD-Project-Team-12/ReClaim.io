@@ -1,4 +1,5 @@
 import { SignedIn, SignedOut, SignInButton, UserButton, useAuth } from "@clerk/clerk-react";
+import { CreateRequestForm } from './components/Recycling/CreateRequestForm';
 
 function App() {
   const { getToken } = useAuth();
@@ -11,7 +12,7 @@ function App() {
       
       // 2. Send the JWT to the .NET Backend in the Authorization header
       // Note: Change 5000 to whatever port your .NET API is running on
-      const response = await fetch("http://localhost:5000/api/test", { 
+      const response = await fetch("http://localhost:5150/api/test", { 
         headers: {
           Authorization: `Bearer ${token}` 
         }
@@ -33,7 +34,7 @@ function App() {
       <header className="flex justify-between items-center mb-8 border-b pb-4">
         <h1 className="text-3xl font-bold text-green-600">ReClaim.io</h1>
 
-        <h1 className="text-4xl font-bold text-green-600 underline">
+        <h1 className="text-2xl font-bold text-green-600 underline">
           Tailwind v4 is Live!
         </h1>
         
@@ -51,18 +52,28 @@ function App() {
       </header>
 
       <main>
+        {/* ইউজার লগইন করা থাকলে এই অংশটি দেখাবে */}
         <SignedIn>
           <h2 className="text-xl mb-4">Welcome to the Dashboard!</h2>
           <button 
             onClick={testBackendConnection} 
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 mb-8"
           >
             Test Secure .NET Backend
           </button>
+
+          <hr className="my-6 border-gray-300" />
+
+          {/* এইখানে আপনার নতুন ফর্মটি বসানো হলো */}
+          <CreateRequestForm />
+
         </SignedIn>
 
+        {/* ইউজার লগইন করা না থাকলে এই অংশটি দেখাবে */}
         <SignedOut>
-          <p className="text-gray-600">Please sign in to access the platform.</p>
+          <p className="text-gray-600 text-center mt-10 text-lg">
+            Please sign in to access the platform and post a recycling request.
+          </p>
         </SignedOut>
       </main>
     </div>

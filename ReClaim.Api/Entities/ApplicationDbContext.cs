@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using ReClaim.Api.Entities;
+using ReClaim.Api.Entities; 
+using ReClaim.Api.Domain.Entities;
 
 namespace ReClaim.Api
 {
@@ -10,19 +11,30 @@ namespace ReClaim.Api
         {
         }
 
-        // Map your tables here
-        public DbSet<Logistics> Logistics { get; set; }
-        // public DbSet<Inventory> Inventory { get; set; } // Map other tables later
+     
+        public DbSet<Logistics> Logistics { get; set; } 
+        
+        
+        public DbSet<RecyclingRequest> RecyclingRequests { get; set; } 
+        public DbSet<RequestItem> RequestItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Ensure the PostGIS extension is enabled on the PostgreSQL database
-            modelBuilder.HasPostgresExtension("postgis");
+            modelBuilder.HasPostgresExtension("postgis"); 
 
-            // You can also enforce your concurrency control here later
-            // modelBuilder.Entity<Inventory>()
-            //    .Property(i => i.RowVersion)
-            //    .IsRowVersion();
+          
+            modelBuilder.Entity<RecyclingRequest>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.PickupLocation)
+                      .HasColumnType("geometry(Point, 4326)"); 
+            });
+
+            modelBuilder.Entity<RequestItem>()
+                .HasOne(i => i.RecyclingRequest)
+                .WithMany(r => r.Items)
+                .HasForeignKey(i => i.RecyclingRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }
