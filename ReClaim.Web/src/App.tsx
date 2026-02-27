@@ -1,43 +1,104 @@
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/clerk-react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import Navbar from "./components/layout/Navbar";
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
+import RequestHistory from "./features/pickup/components/RequestHistory";
+import FleetDashboard from "./features/pickup/components/FleetDashboard";
+import { Loader2 } from "lucide-react";
+import type { JSX } from "react";
+import AdminDashboard from "./features/admin/components/AdminDashboard";
+import VerificationForm from "./features/account/components/VerificationForm";
+
+// --- SECURITY WRAPPER ---
+// This intercepts the route, checks the Clerk user's role, and kicks them out if they don't match.
+const RequireRole = ({ children, allowedRoles }: { children: JSX.Element, allowedRoles: string[] }) => {
+  const { user, isLoaded } = useUser();
+
+  if (!isLoaded) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="animate-spin text-emerald-500" size={32} />
+      </div>
+    );
+  }
+
+  // Extract the role from Clerk's public metadata (defaults to "citizen" if empty)
+  const role = (user?.publicMetadata?.role as string) || "citizen";
+
+  if (!allowedRoles.includes(role)) {
+    // Kick unauthorized users back to their standard dashboard
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* GLOBAL NAVBAR */}
-      <nav className="flex justify-between items-center p-6 bg-white shadow-sm">
-        <h1 className="text-2xl font-black text-green-600 tracking-tight">ReClaim<span className="text-gray-900">.io</span></h1>
-        
-        <div className="flex items-center gap-4">
-          <SignedOut>
-            <SignInButton mode="modal">
-              <button className="px-5 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">
-                Sign In
-              </button>
-            </SignInButton>
-          </SignedOut>
-          <SignedIn>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-        </div>
-      </nav>
+    <div className="min-h-screen flex flex-col font-sans bg-surface">
+      <Navbar />
 
-      {/* MAIN CONTENT AREA */}
-      <main className="container mx-auto mt-8">
-        <SignedOut>
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">E-Waste Recycling Made Rewarding</h2>
-            <p className="text-gray-600 max-w-md mb-8">
-              Turn your old electronics into value. Join the movement to clean the environment and earn rewards.
-            </p>
-            <SignInButton mode="modal" />
-          </div>
-        </SignedOut>
+      <main className="flex-grow w-full max-w-7xl mx-auto px-6 py-12">
+        <Routes>
+          <Route path="/" element={
+            <>
+              <SignedOut><Home /></SignedOut>
+              <SignedIn><Navigate to="/dashboard" /></SignedIn>
+            </>
+          } />
 
-        <SignedIn>
-          <Dashboard />
-        </SignedIn>
+          {/* Citizen Routes */}
+          <Route path="/dashboard" element={
+            <>
+              <SignedIn><Dashboard /></SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
+
+          <Route path="/history" element={
+            <>
+              <SignedIn>
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                  <RequestHistory />
+                </div>
+              </SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
+
+          {/* Recycler / Admin Routes */}
+          <Route path="/fleet" element={
+            <>
+              <SignedIn>
+                <RequireRole allowedRoles={["recycler", "admin"]}>
+                  <FleetDashboard />
+                </RequireRole>
+              </SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
+          <Route path="/admin" element={
+            <SignedIn>
+              <RequireRole allowedRoles={["admin"]}>
+                <AdminDashboard />
+              </RequireRole>
+            </SignedIn>
+          } />
+          <Route path="/verify" element={
+            <>
+              <SignedIn>
+                <VerificationForm />
+              </SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
+        </Routes>
       </main>
+
+      <footer className="bg-white border-t border-slate-200 py-8 text-center text-sm font-medium text-slate-500 mt-auto">
+        <p>&copy; {new Date().getFullYear()} ReClaim.io - Intelligent E-Waste Logistics</p>
+      </footer>
     </div>
   );
 }
