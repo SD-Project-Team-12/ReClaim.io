@@ -1,1 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "leaflet/dist/leaflet.css";
 @import "tailwindcss";
+
+@theme {
+  --color-surface: #FAFAFA;
+  --color-slate-dark: #09090B;
+  --color-emerald-primary: #10B981;
+  --color-emerald-hover: #059669;
+  --font-sans: 'Inter', sans-serif;
+}
+
+body {
+  @apply bg-surface text-slate-dark font-sans antialiased;
+  /* Premium dot-grid texture */
+  background-image: radial-gradient(#E4E4E7 1px, transparent 1px);
+  background-size: 24px 24px;
+}
