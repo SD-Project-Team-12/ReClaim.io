@@ -1,72 +1,43 @@
-import { SignedIn, SignedOut, SignInButton, UserButton, useAuth } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
+import Dashboard from "./pages/Dashboard";
 
-function App() {
-  const { getToken } = useAuth();
-
-  // Function to test calling our secure .NET API
-  const testBackendConnection = async () => {
-    try {
-      // 1. Ask Clerk for the secure JWT
-      const token = await getToken();
-      
-      // 2. Send the JWT to the .NET Backend in the Authorization header
-      // Note: Change 5000 to whatever port your .NET API is running on
-      const response = await fetch("http://localhost:5000/api/test", { 
-        headers: {
-          Authorization: `Bearer ${token}` 
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.text();
-        alert("Backend says: " + data);
-      } else {
-        alert("Backend rejected the request! Status: " + response.status);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
-
+export default function App() {
   return (
-    <div className="min-h-screen p-8 bg-gray-50 font-sans">
-      <header className="flex justify-between items-center mb-8 border-b pb-4">
-        <h1 className="text-3xl font-bold text-green-600">ReClaim.io</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* GLOBAL NAVBAR */}
+      <nav className="flex justify-between items-center p-6 bg-white shadow-sm">
+        <h1 className="text-2xl font-black text-green-600 tracking-tight">ReClaim<span className="text-gray-900">.io</span></h1>
+        
+        <div className="flex items-center gap-4">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="px-5 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">
+                Sign In
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+        </div>
+      </nav>
 
-        <h1 className="text-4xl font-bold text-green-600 underline">
-          Tailwind v4 is Live!
-        </h1>
-        
-        {/* Clerk handles the user profile picture and logout automatically */}
-        <SignedIn>
-          <UserButton />
-        </SignedIn>
-        
-        {/* Clerk handles the login modal automatically */}
+      {/* MAIN CONTENT AREA */}
+      <main className="container mx-auto mt-8">
         <SignedOut>
-          <div className="bg-green-600 text-white px-4 py-2 rounded">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">E-Waste Recycling Made Rewarding</h2>
+            <p className="text-gray-600 max-w-md mb-8">
+              Turn your old electronics into value. Join the movement to clean the environment and earn rewards.
+            </p>
             <SignInButton mode="modal" />
           </div>
         </SignedOut>
-      </header>
 
-      <main>
         <SignedIn>
-          <h2 className="text-xl mb-4">Welcome to the Dashboard!</h2>
-          <button 
-            onClick={testBackendConnection} 
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
-          >
-            Test Secure .NET Backend
-          </button>
+          <Dashboard />
         </SignedIn>
-
-        <SignedOut>
-          <p className="text-gray-600">Please sign in to access the platform.</p>
-        </SignedOut>
       </main>
     </div>
   );
 }
-
-export default App;
