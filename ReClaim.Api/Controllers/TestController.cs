@@ -1,22 +1,33 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace ReClaim.Api.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // <-- THIS IS THE LOCK
+    [Route("api/[controller]")]
     public class TestController : ControllerBase
     {
-        [HttpGet]
-        public IActionResult GetSecureData()
+        // 1. Anyone logged in can access this (Citizens, Recyclers, Admins)
+        [Authorize]
+        [HttpGet("citizen")]
+        public IActionResult GetCitizenData()
         {
-            // If the code reaches here, the user is 100% authenticated by Clerk.
-            // We can even extract their unique Clerk User ID from the token!
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            // Grab every single claim (piece of data) .NET sees in your token
+            var allClaims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
 
-            return Ok($"Success! The backend recognizes you. Your secure Clerk ID is: {userId}");
+            return Ok(new
+            {
+                Message = "Hello Citizen! Here is what .NET sees in your token:",
+                Claims = allClaims
+            });
+        }
+
+        // 2. ONLY Admins can access this!
+        [Authorize(Roles = "admin")]
+        [HttpGet("admin")]
+        public IActionResult GetAdminData()
+        {
+            return Ok(new { Message = "Hello Admin! You have top-secret access." });
         }
     }
 }
