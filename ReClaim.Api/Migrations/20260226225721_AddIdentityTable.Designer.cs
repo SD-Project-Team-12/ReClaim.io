@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using ReClaim.Api;
 namespace ReClaim.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260226225721_AddIdentityTable")]
+    partial class AddIdentityTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,75 +56,6 @@ namespace ReClaim.Api.Migrations
                     b.ToTable("tbl_logistics");
                 });
 
-            modelBuilder.Entity("ReClaim.Api.Entities.PickUpRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("BrandAndModel")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("CitizenId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Condition")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("EstimatedValue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("FinalPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsPoweringOn")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ItemDescription")
-                        .HasColumnType("text");
-
-                    b.Property<double>("Latitude")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("Longitude")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("PickUpAddress")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("PreferredPickUpTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RecyclerId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SubCategory")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<double>("WeightKg")
-                        .HasColumnType("double precision");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("tbl_pickup_requests", (string)null);
-                });
-
             modelBuilder.Entity("ReClaim.Api.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -153,7 +87,7 @@ namespace ReClaim.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("tbl_identity", (string)null);
+                    b.ToTable("tbl_identity");
                 });
 #pragma warning restore 612, 618
         }
