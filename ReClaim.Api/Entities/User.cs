@@ -25,6 +25,10 @@ namespace ReClaim.Api.Entities
         [Column("last_name")]
         public string? LastName { get; set; }
 
+        [Required]
+        [Column("role")]
+        public string Role { get; set; } = "citizen";
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
