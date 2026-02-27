@@ -10,19 +10,18 @@ namespace ReClaim.Api
         {
         }
 
-        // Map your tables here
+        public DbSet<User> Users { get; set; } 
         public DbSet<Logistics> Logistics { get; set; }
-        // public DbSet<Inventory> Inventory { get; set; } // Map other tables later
+        public DbSet<PickUpRequest> PickUpRequests { get; set; } 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Ensure the PostGIS extension is enabled on the PostgreSQL database
+            // Keep your PostGIS extension
             modelBuilder.HasPostgresExtension("postgis");
 
-            // You can also enforce your concurrency control here later
-            // modelBuilder.Entity<Inventory>()
-            //    .Property(i => i.RowVersion)
-            //    .IsRowVersion();
+            // Explicitly map table names for clarity in Postgres
+            modelBuilder.Entity<User>().ToTable("tbl_identity");
+            modelBuilder.Entity<PickUpRequest>().ToTable("tbl_pickup_requests");
 
             base.OnModelCreating(modelBuilder);
         }
