@@ -11,10 +11,10 @@ namespace ReClaim.Api.Controllers
     [ApiController]
     public class WebhooksController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly AppDbContext _context;
         private readonly IConfiguration _config;
 
-        public WebhooksController(ApplicationDbContext context, IConfiguration config)
+        public WebhooksController(AppDbContext context, IConfiguration config)
         {
             _context = context;
             _config = config;
@@ -64,13 +64,26 @@ namespace ReClaim.Api.Controllers
             {
                 var userElement = data.RootElement.GetProperty("data");
                 var email = userElement.GetProperty("email_addresses")[0].GetProperty("email_address").GetString();
-                
+
+                // 1. Extract the public_metadata object safely
+                string role = "citizen"; // Default everyone to citizen for safety
+                if (userElement.TryGetProperty("public_metadata", out var metadata))
+                {
+                    if (metadata.TryGetProperty("role", out var roleElement))
+                    {
+                        role = roleElement.GetString() ?? "citizen";
+                    }
+                }
+
                 var newUser = new User
                 {
                     ClerkId = userElement.GetProperty("id").GetString()!,
                     Email = email!,
                     FirstName = userElement.TryGetProperty("first_name", out var fn) ? fn.GetString() : null,
-                    LastName = userElement.TryGetProperty("last_name", out var ln) ? ln.GetString() : null
+                    LastName = userElement.TryGetProperty("last_name", out var ln) ? ln.GetString() : null,
+
+                    // 2. Save the role to your PostgreSQL database!
+                    Role = role
                 };
 
                 _context.Users.Add(newUser);
@@ -78,6 +91,40 @@ namespace ReClaim.Api.Controllers
             }
 
             // Always return a 200 OK to Clerk so they know we received it
+            return Ok();
+        }
+
+        
+        [HttpPost]
+        public async Task<IActionResult> Receive()
+        {
+            var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+            var data = JsonDocument.Parse(json);
+            var eventType = data.RootElement.GetProperty("type").GetString();
+
+            if (eventType == "user.created")
+            {
+                var userElement = data.RootElement.GetProperty("data");
+                var clerkId = userElement.GetProperty("id").GetString();
+                var email = userElement.GetProperty("email_addresses")[0].GetProperty("email_address").GetString();
+
+                // AUTO-ASSIGN: Default every new signup to "citizen"
+                var newUser = new User
+                {
+                    ClerkId = clerkId!,
+                    Email = email!,
+                    Role = "citizen", // This is the automatic assignment
+                    FirstName = userElement.TryGetProperty("first_name", out var f) ? f.GetString() : null,
+                    LastName = userElement.TryGetProperty("last_name", out var l) ? l.GetString() : null,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Users.Add(newUser);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Citizen auto-assigned and synced." });
+            }
+
             return Ok();
         }
     }

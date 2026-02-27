@@ -13,10 +13,10 @@ namespace ReClaim.Api.Controllers
     [Authorize] // Protected by Clerk JWT
     public class PickUpController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly AppDbContext _context;
         private readonly IPriceEstimationService _priceService;
 
-        public PickUpController(ApplicationDbContext context, IPriceEstimationService priceService)
+        public PickUpController(AppDbContext context, IPriceEstimationService priceService)
         {
             _context = context;
             _priceService = priceService;
@@ -79,6 +79,48 @@ namespace ReClaim.Api.Controllers
                 .ToListAsync();
 
             return Ok(requests);
+        }
+
+        // 1. GET ALL PENDING PINS FOR THE FLEET MAP
+        [HttpGet("pending")]
+        [Authorize] // You can restrict this to Recyclers/Admins later!
+        public async Task<IActionResult> GetPendingRequests()
+        {
+            // Status 0 means it is Pending and awaiting a driver
+            var pendingRequests = await _context.PickUpRequests
+                .Where(req => req.Status == 0)
+                .OrderBy(req => req.CreatedAt)
+                .ToListAsync();
+
+            return Ok(pendingRequests);
+        }
+
+        // 2. ALLOW A DRIVER TO CLAIM A PIN
+        [HttpPut("{id}/claim")]
+        [Authorize]
+        public async Task<IActionResult> ClaimRequest(Guid id)
+        {
+            var request = await _context.PickUpRequests.FindAsync(id);
+            if (request == null) return NotFound("Request not found.");
+            
+            // Prevent two drivers from claiming the same request at the exact same time
+            if (request.Status != 0) return BadRequest("This request has already been claimed.");
+
+            // Get the current Recycler's ID from the JWT token
+            var clerkId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var recycler = await _context.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId);
+
+            if (recycler == null) return Unauthorized();
+
+            // Update the status to Assigned (1)
+            request.Status = (RequestStatus)1;
+            
+            // If your PickUpRequest entity has a RecyclerId, uncomment this line!
+            // request.RecyclerId = recycler.Id; 
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Extraction assigned successfully." });
         }
     }
 }

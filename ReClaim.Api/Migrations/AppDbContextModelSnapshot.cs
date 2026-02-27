@@ -11,8 +11,8 @@ using ReClaim.Api;
 
 namespace ReClaim.Api.Migrations
 {
-    [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(AppDbContext))]
+    partial class AppDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
@@ -111,7 +111,6 @@ namespace ReClaim.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("SubCategory")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<double>("WeightKg")
@@ -120,6 +119,45 @@ namespace ReClaim.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("tbl_pickup_requests", (string)null);
+                });
+
+            modelBuilder.Entity("ReClaim.Api.Entities.RecyclerApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ClerkId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NidNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OrganizationName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("tbl_recycler_applications", (string)null);
                 });
 
             modelBuilder.Entity("ReClaim.Api.Entities.User", b =>
@@ -151,9 +189,23 @@ namespace ReClaim.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_name");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("role");
+
                     b.HasKey("Id");
 
                     b.ToTable("tbl_identity", (string)null);
+                });
+
+            modelBuilder.Entity("ReClaim.Api.Entities.RecyclerApplication", b =>
+                {
+                    b.HasOne("ReClaim.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }
