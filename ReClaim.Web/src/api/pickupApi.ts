@@ -29,3 +29,21 @@ export const getMyRequests = async (token: string | null) => {
   if (!response.ok) throw new Error("Failed to fetch history");
   return response.json();
 };
+
+// Fetch all pending requests for the Fleet Map
+export const getPendingRequests = async (token: string | null) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error("Failed to fetch pending requests");
+    return response.json();
+};
+
+// Allow a recycler to claim a request
+export const claimPickUpRequest = async (id: string, token: string | null) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/${id}/claim`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response;
+};
