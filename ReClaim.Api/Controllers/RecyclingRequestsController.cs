@@ -8,7 +8,7 @@ namespace ReClaim.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize] // শুধুমাত্র লগইন করা ইউজারদের জন্য
+[Authorize] 
 public class RecyclingRequestsController : ControllerBase
 {
     private readonly IRecyclingRequestService _requestService;
@@ -23,19 +23,61 @@ public class RecyclingRequestsController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        // ক্লার্ক থেকে ইউজারের আইডি নেওয়া
         var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        
-        if (string.IsNullOrEmpty(sellerId)) return Unauthorized("ইউজার আইডি পাওয়া যায়নি।");
+        if (string.IsNullOrEmpty(sellerId)) return Unauthorized("User ID not found.");
 
         try
         {
             var request = await _requestService.CreateRequestAsync(sellerId, dto);
-            return Ok(new { Message = "রিকোয়েস্ট সফল হয়েছে", RequestId = request.Id });
+            return Ok(new { Message = "Request created successfully", RequestId = request.Id });
         }
-        catch (Exception) // 'ex' সরিয়ে দেওয়া হয়েছে কারণ এটি ব্যবহৃত হচ্ছিল না
+        catch (Exception)
         {
-            return StatusCode(500, "রিকোয়েস্ট প্রসেস করার সময় একটি এরর হয়েছে।");
+            return StatusCode(500, "An error occurred while processing the request.");
         }
+    }
+
+    
+    [HttpGet("all")]
+    [AllowAnonymous] 
+    public async Task<IActionResult> GetAllRequests()
+    {
+        var requests = await _requestService.GetAllRequestsAsync();
+        
+        var response = requests.Select(r => new {
+            r.Id,
+            r.SellerId,
+            r.Status,
+            r.CreatedAt,
+            Latitude = r.PickupLocation?.Y,
+            Longitude = r.PickupLocation?.X,
+            r.AddressDetails,
+            Items = r.Items.Select(i => new { i.Id, i.Type, i.EstimatedWeightKg, i.PredictedValue })
+        });
+        
+        return Ok(response);
+    }
+
+    
+    [HttpGet("my-requests")]
+    public async Task<IActionResult> GetMyRequests()
+    {
+        var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(sellerId)) return Unauthorized();
+
+        var requests = await _requestService.GetUserRequestsAsync(sellerId);
+        
+        var response = requests.Select(r => new {
+            r.Id,
+            r.SellerId,
+            r.Status,
+            r.CreatedAt,
+            Latitude = r.PickupLocation?.Y,
+            Longitude = r.PickupLocation?.X,
+            r.AddressDetails,
+            Items = r.Items.Select(i => new { i.Id, i.Type, i.EstimatedWeightKg, i.PredictedValue })
+        });
+        
+        return Ok(response);
     }
 }

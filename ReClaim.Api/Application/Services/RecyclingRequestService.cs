@@ -3,54 +3,60 @@ using NetTopologySuite.Geometries;
 using ReClaim.Api.Application.DTOs;
 using ReClaim.Api.Application.Interfaces;
 using ReClaim.Api.Domain.Entities;
-using ReClaim.Api.Domain.Enums; 
+using ReClaim.Api.Domain.Enums;
+using ReClaim.Api;
 
 namespace ReClaim.Api.Application.Services;
 
 public class RecyclingRequestService : IRecyclingRequestService
 {
-    private readonly ApplicationDbContext _context; 
-    private readonly GeometryFactory _geometryFactory;
+    private readonly ApplicationDbContext _context;
 
     public RecyclingRequestService(ApplicationDbContext context)
     {
         _context = context;
-        // SRID 4326 is standard WGS84 (GPS)
-        _geometryFactory = NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
     }
 
     public async Task<RecyclingRequest> CreateRequestAsync(string sellerId, CreateRecyclingRequestDto dto)
     {
-        var location = _geometryFactory.CreatePoint(new Coordinate(dto.Longitude, dto.Latitude));
+        var geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+        var location = geometryFactory.CreatePoint(new Coordinate(dto.Longitude, dto.Latitude));
 
         var request = new RecyclingRequest
         {
             SellerId = sellerId,
             PickupLocation = location,
             AddressDetails = dto.AddressDetails,
+            Status = RequestStatus.Pending,
             Items = dto.Items.Select(i => new RequestItem
             {
-                Type = i.Type,
+                Type = (ReClaim.Api.Domain.Enums.WasteType)i.Type,
                 EstimatedWeightKg = i.EstimatedWeightKg,
-                PhotoUrl = i.PhotoUrl,
                 PredictedValue = i.PredictedValue
             }).ToList()
         };
 
-        await _context.Set<RecyclingRequest>().AddAsync(request);
+        _context.RecyclingRequests.Add(request);
         await _context.SaveChangesAsync();
-
         return request;
     }
 
-    public async Task<IEnumerable<RecyclingRequest>> GetNearbyRequestsAsync(double lat, double lon, double radiusKm)
+    
+    public async Task<IEnumerable<RecyclingRequest>> GetAllRequestsAsync()
     {
-        var location = _geometryFactory.CreatePoint(new Coordinate(lon, lat));
-        var radiusInMeters = radiusKm * 1000;
+        return await _context.RecyclingRequests
+            .Include(r => r.Items)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
 
-        // এখানে ToListAsync() এবং RequestStatus.Pending ফিক্স করা হয়েছে
-        return await _context.Set<RecyclingRequest>()
-            .Where(r => r.Status == RequestStatus.Pending && r.PickupLocation.Distance(location) <= radiusInMeters)
+ 
+    public async Task<IEnumerable<RecyclingRequest>> GetUserRequestsAsync(string sellerId)
+    {
+        return await _context.RecyclingRequests
+            .Include(r => r.Items)
+            .Where(r => r.SellerId == sellerId)
+            .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
     }
 }
