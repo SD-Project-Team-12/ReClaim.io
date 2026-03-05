@@ -47,3 +47,42 @@ export const claimPickUpRequest = async (id: string, token: string | null) => {
     });
     return response;
 };
+
+export const deletePickUpRequest = async (id: string, token: string | null) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response;
+};
+
+// Fetch requests claimed by the logged-in recycler
+export const getMyAssignments = async (token: string | null) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/my-assignments`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error("Failed to fetch assignments");
+    return response.json();
+};
+
+// Update status (e.g., from Assigned to Picked Up)
+export const updateRequestStatus = async (id: string, newStatus: number, token: string | null) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/${id}/status`, {
+        method: "PUT",
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify(newStatus)
+    });
+    return response;
+};
+
+// Fetch a single request by its ID
+export const getRequestById = async (id: string, token: string | null) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error("Failed to fetch request details");
+    return response.json();
+};

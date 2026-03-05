@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import type { JSX } from "react";
 import AdminDashboard from "./features/admin/components/AdminDashboard";
 import VerificationForm from "./features/account/components/VerificationForm";
+import RequestDetails from "./pages/RequestDetails";
 
 // --- SECURITY WRAPPER ---
 // This intercepts the route, checks the Clerk user's role, and kicks them out if they don't match.
@@ -93,7 +94,13 @@ export default function App() {
               <SignedOut><RedirectToSignIn /></SignedOut>
             </>
           } />
-        </Routes>
+          <Route path="/request/:id" element={
+          <>
+            <SignedIn><RequestDetails /></SignedIn>
+            <SignedOut><RedirectToSignIn /></SignedOut>
+          </>
+        } />
+        </Routes>        
       </main>
 
       <footer className="bg-white border-t border-slate-200 py-8 text-center text-sm font-medium text-slate-500 mt-auto">

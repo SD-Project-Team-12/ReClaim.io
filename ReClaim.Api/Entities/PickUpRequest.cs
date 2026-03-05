@@ -35,7 +35,7 @@ namespace ReClaim.Api.Entities
         public decimal? FinalPrice { get; set; }
 
         // --- Logistics ---
-        public string? ImageUrl { get; set; }
+        public List<string>? ImageUrls { get; set; } = new List<string>();
         [Required]
         public string PickUpAddress { get; set; } = null!;
         public double Latitude { get; set; }

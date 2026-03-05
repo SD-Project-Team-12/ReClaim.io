@@ -13,5 +13,6 @@ namespace ReClaim.Api.Models.DTOs
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public DateTime PreferredPickUpTime { get; set; }
+        public List<string>? ImageUrls { get; set; } = new List<string>();
     }
 }

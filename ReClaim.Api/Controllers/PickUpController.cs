@@ -15,11 +15,13 @@ namespace ReClaim.Api.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IPriceEstimationService _priceService;
+        private readonly ILogger<PickUpController> _logger;
 
-        public PickUpController(AppDbContext context, IPriceEstimationService priceService)
+        public PickUpController(AppDbContext context, IPriceEstimationService priceService, ILogger<PickUpController> logger)
         {
             _context = context;
             _priceService = priceService;
+            _logger = logger;
         }
 
         [HttpPost("submit")]
@@ -43,8 +45,7 @@ namespace ReClaim.Api.Controllers
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
 
-                // --- THE FIX IS HERE ---
-                // We must specify that this time is UTC for PostgreSQL
+                ImageUrls = dto.ImageUrls,
                 PreferredPickUpTime = DateTime.SpecifyKind(dto.PreferredPickUpTime, DateTimeKind.Utc),
 
                 Status = RequestStatus.Pending,
@@ -102,25 +103,127 @@ namespace ReClaim.Api.Controllers
         {
             var request = await _context.PickUpRequests.FindAsync(id);
             if (request == null) return NotFound("Request not found.");
-            
-            // Prevent two drivers from claiming the same request at the exact same time
             if (request.Status != 0) return BadRequest("This request has already been claimed.");
 
-            // Get the current Recycler's ID from the JWT token
             var clerkId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var recycler = await _context.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId);
+            if (clerkId == null) return Unauthorized();
 
-            if (recycler == null) return Unauthorized();
-
-            // Update the status to Assigned (1)
             request.Status = (RequestStatus)1;
-            
-            // If your PickUpRequest entity has a RecyclerId, uncomment this line!
-            // request.RecyclerId = recycler.Id; 
+            request.RecyclerId = clerkId;
 
             await _context.SaveChangesAsync();
-
             return Ok(new { message = "Extraction assigned successfully." });
         }
+
+        // FETCH DRIVER'S ACTIVE MISSIONS
+        [HttpGet("my-assignments")]
+        [Authorize]
+        public async Task<IActionResult> GetMyAssignments()
+        {
+            var clerkId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (clerkId == null) return Unauthorized();
+
+            // Fetch requests assigned to THIS driver that are not yet Cancelled or Completed
+            var assignments = await _context.PickUpRequests
+                .Where(r => r.RecyclerId == clerkId && r.Status == (RequestStatus)1) // 1 = Assigned
+                .OrderBy(r => r.PreferredPickUpTime)
+                .ToListAsync();
+
+            return Ok(assignments);
+        }
+
+        [HttpPut("{id}/status")]
+        [Authorize]
+        public async Task<IActionResult> UpdateRequestStatus(Guid id, [FromBody] int newStatus)
+        {
+            var clerkId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var request = await _context.PickUpRequests.FindAsync(id);
+
+            if (request == null) return NotFound();
+
+            // Security Check: Only the assigned driver can update this
+            if (request.RecyclerId != clerkId) return Forbid();
+
+            request.Status = (RequestStatus)newStatus;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Status updated successfully." });
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRequest(Guid id)
+        {
+            var request = await _context.PickUpRequests.FindAsync(id);
+
+            if (request == null)
+                return NotFound(new { message = "Request not found" });
+
+            // Business Logic: Only allow deletion if the driver hasn't claimed it yet
+            if (request.Status != Entities.RequestStatus.Pending)
+                return BadRequest(new { message = "Cannot delete a request that is already assigned or completed." });
+
+            _context.PickUpRequests.Remove(request);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Deployment deleted successfully." });
+        }
+
+        [HttpGet("{id}")]
+        [Authorize]
+        public async Task<IActionResult> GetRequestById(Guid id, [FromServices] IHttpClientFactory clientFactory, [FromServices] IConfiguration config)
+        {
+            var request = await _context.PickUpRequests.FindAsync(id);
+            if (request == null) return NotFound();
+
+            var dto = new RequestDetailsDto
+            {
+                Request = request,
+                ContactName = "Citizen Profile",
+                ContactPhone = "Contact Unavailable"
+            };
+
+            try
+            {
+                var clerkSecretKey = config["Clerk:SecretKey"];
+                if (string.IsNullOrEmpty(clerkSecretKey))
+                {
+                    _logger.LogWarning("Clerk Secret Key is missing from secrets!");
+                }
+                else
+                {
+                    var client = clientFactory.CreateClient();
+                    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", clerkSecretKey);
+
+                    var response = await client.GetAsync($"https://api.clerk.com/v1/users/{request.CitizenId}");
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var content = await response.Content.ReadAsStringAsync();
+                        using var doc = System.Text.Json.JsonDocument.Parse(content);
+                        var root = doc.RootElement;
+
+                        // Safely extract name with null checks to stop warnings
+                        string firstName = root.TryGetProperty("first_name", out var fn) ? fn.GetString() ?? "" : "";
+                        string lastName = root.TryGetProperty("last_name", out var ln) ? ln.GetString() ?? "" : "";
+                        dto.ContactName = $"{firstName} {lastName}".Trim();
+
+                        if (string.IsNullOrEmpty(dto.ContactName)) dto.ContactName = "Anonymous Citizen";
+
+                        // Safely extract first phone number
+                        if (root.TryGetProperty("phone_numbers", out var phones) && phones.GetArrayLength() > 0)
+                        {
+                            dto.ContactPhone = phones[0].GetProperty("phone_number").GetString() ?? "No Phone Provided";
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Clerk Enrichment Failed for request {RequestId}", id);
+            }
+
+            return Ok(dto);
+        }
     }
+
 }

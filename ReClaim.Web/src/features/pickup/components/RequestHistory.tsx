@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import { getMyRequests } from "../../../api/pickupApi";
-import { RefreshCw, Clock, Truck, CheckCircle2, XCircle, PackageOpen } from "lucide-react";
+import { getMyRequests, deletePickUpRequest } from "../../../api/pickupApi";
+import { RefreshCw, Clock, Truck, CheckCircle2, XCircle, PackageOpen, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function RequestHistory() {
   const { getToken } = useAuth();
+  const navigate = useNavigate(); 
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +26,25 @@ export default function RequestHistory() {
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to abort this deployment?")) return;
+
+    try {
+      const token = await getToken();
+      const res = await deletePickUpRequest(id, token);
+
+      if (res.ok) {
+        setRequests(requests.filter(req => req.id !== id));
+      } else {
+        const errorData = await res.json();
+        alert(errorData.message || "Failed to delete request.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error while trying to delete.");
+    }
+  };
 
   // Professional Badge Styling Logic
   const getStatusBadge = (status: number) => {
@@ -45,12 +66,12 @@ export default function RequestHistory() {
           <h3 className="text-xl font-bold text-slate-900 tracking-tight">Deployment History</h3>
           <p className="text-sm text-slate-500 font-medium mt-1">Track your e-waste logistics and valuations.</p>
         </div>
-        <button 
-          onClick={fetchHistory} 
+        <button
+          onClick={fetchHistory}
           disabled={loading}
           className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
         >
-          <RefreshCw size={14} className={loading ? "animate-spin text-emerald-500" : "text-emerald-500"} /> 
+          <RefreshCw size={14} className={loading ? "animate-spin text-emerald-500" : "text-emerald-500"} />
           Refresh
         </button>
       </div>
@@ -65,7 +86,7 @@ export default function RequestHistory() {
               <th className="px-6 py-4">Logistics Status</th>
             </tr>
           </thead>
-          
+
           <tbody className="divide-y divide-slate-100">
             {requests.length === 0 && !loading ? (
               <tr>
@@ -81,9 +102,13 @@ export default function RequestHistory() {
               requests.map((req) => {
                 const badge = getStatusBadge(req.status);
                 const BadgeIcon = badge.icon;
-                
+
                 return (
-                  <tr key={req.id} className="hover:bg-slate-50 transition-colors group">
+                  <tr 
+                    key={req.id} 
+                    onClick={() => navigate(`/request/${req.id}`)}
+                    className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900">{req.brandAndModel || req.category}</div>
                       <div className="text-[11px] text-slate-400 font-medium mt-0.5 uppercase tracking-wide">
@@ -93,11 +118,24 @@ export default function RequestHistory() {
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900">৳ {req.estimatedValue.toLocaleString()}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 flex items-center justify-between">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-bold uppercase tracking-wide ${badge.color}`}>
                         <BadgeIcon size={12} />
                         {badge.label}
                       </span>
+                      
+                      {req.status === 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevents navigating to details page
+                            handleDelete(req.id);
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors ml-4"
+                          title="Abort Deployment"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
