@@ -1,0 +1,365 @@
+import { useEffect, useState, useRef } from 'react';
+import { useAuth } from '@clerk/clerk-react';
+import * as signalR from '@microsoft/signalr';
+import { Search, Send, Paperclip, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { uploadImageToCloud } from '../../../utils/uploadService'; 
+import { getContacts, getChatHistory } from '../../../api/chatApi'; 
+
+interface Contact {
+    clerkId: string;
+    name: string;
+    role: string;
+    email: string;
+}
+
+interface ChatMessage {
+    senderId: string;
+    message: string;
+}
+
+export const ChatPage = () => {
+    // --- BUSINESS LOGIC (UNCHANGED) ---
+    const { getToken, userId } = useAuth();
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+    const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [inputText, setInputText] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const fetchContacts = async () => {
+            const token = await getToken();
+            if (token) {
+                try {
+                    const data = await getContacts(token);
+                    setContacts(data);
+                } catch (error) {
+                    console.error("Failed to fetch contacts:", error);
+                }
+            }
+        };
+        fetchContacts();
+    }, [getToken]);
+
+    useEffect(() => {
+        let isMounted = true;
+        let currentConnection: signalR.HubConnection | null = null;
+
+        const connectSignalR = async () => {
+            const token = await getToken();
+            if (!token || !isMounted) return;
+
+            const baseUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, "");
+
+            currentConnection = new signalR.HubConnectionBuilder()
+                .withUrl(`${baseUrl}/chathub`, { accessTokenFactory: () => token })
+                .withAutomaticReconnect()
+                .build();
+
+            currentConnection.on("ReceiveMessage", (senderId: string, message: string) => {
+                setMessages(prev => [...prev, { senderId, message }]);
+            });
+
+            currentConnection.on("UserConnected", (connectedUserId: string) => {
+                setOnlineUsers(prev => new Set(prev).add(connectedUserId));
+            });
+
+            currentConnection.on("UserDisconnected", (disconnectedUserId: string) => {
+                setOnlineUsers(prev => {
+                    const next = new Set(prev);
+                    next.delete(disconnectedUserId);
+                    return next;
+                });
+            });
+
+            try {
+                await currentConnection.start();
+                if (isMounted) {
+                    setConnection(currentConnection);
+                    const currentOnlineUsers = await currentConnection.invoke<string[]>("GetOnlineUsers");
+                    setOnlineUsers(new Set(currentOnlineUsers));
+                } else {
+                    currentConnection.stop();
+                }
+            } catch (err) {
+                console.error("SignalR Error: ", err);
+            }
+        };
+
+        connectSignalR();
+
+        return () => {
+            isMounted = false;
+            if (currentConnection) {
+                currentConnection.off("ReceiveMessage");
+                currentConnection.stop();
+            }
+        };
+    }, [getToken]);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            if (!selectedContact) {
+                setMessages([]);
+                return;
+            }
+            try {
+                const token = await getToken();
+                if (token) {
+                    const data = await getChatHistory(selectedContact.clerkId, token);
+                    setMessages(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch history:", error);
+            }
+        };
+        fetchHistory();
+    }, [selectedContact, getToken]);
+
+    useEffect(() => {
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+    }, [messages]);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedImage(file);
+            setImagePreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+    const handleSend = async () => {
+        if (!selectedContact || !connection || isUploading) return;
+
+        if (selectedImage) {
+            setIsUploading(true);
+            try {
+                const cloudinaryUrl = await uploadImageToCloud(selectedImage);
+
+                if (cloudinaryUrl) {
+                    const imageMessage = `[IMAGE]${cloudinaryUrl}`;
+                    await connection.invoke("SendMessage", selectedContact.clerkId, imageMessage);
+                    setMessages(prev => [...prev, { senderId: userId || "", message: imageMessage }]);
+
+                    if (inputText.trim() !== "") {
+                        await connection.invoke("SendMessage", selectedContact.clerkId, inputText);
+                        setMessages(prev => [...prev, { senderId: userId || "", message: inputText }]);
+                    }
+                } else {
+                    console.error("Image upload to Cloudinary failed.");
+                }
+            } catch (error) {
+                console.error("Error sending image:", error);
+            } finally {
+                setIsUploading(false);
+                setSelectedImage(null);
+                setImagePreviewUrl(null);
+                setInputText("");
+                if (fileInputRef.current) fileInputRef.current.value = "";
+            }
+        } 
+        else if (inputText.trim() !== "") {
+            await connection.invoke("SendMessage", selectedContact.clerkId, inputText);
+            setMessages(prev => [...prev, { senderId: userId || "", message: inputText }]);
+            setInputText("");
+        }
+    };
+
+    const filteredContacts = contacts.filter(c =>
+        c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    // --- END BUSINESS LOGIC ---
+
+    return (
+        <div className="flex h-[85vh] max-w-[1250px] mx-auto my-8 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden text-slate-dark">
+            
+            {/* Left Sidebar */}
+            <div className="w-80 border-r border-gray-100 bg-surface flex flex-col z-10">
+                <div className="p-6 border-b border-gray-100 bg-white">
+                    <h2 className="text-xl font-bold tracking-tight">Messages</h2>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-1">ReClaim.io Network</p>
+                    
+                    <div className="relative mt-5">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Search contacts..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 bg-gray-100/50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-emerald-primary focus:ring-1 focus:ring-emerald-primary outline-none transition-all"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-200">
+                    {filteredContacts.map((contact) => {
+                        const isSelected = selectedContact?.clerkId === contact.clerkId;
+                        const isOnline = onlineUsers.has(contact.clerkId);
+                        return (
+                            <button
+                                key={contact.clerkId}
+                                onClick={() => setSelectedContact(contact)}
+                                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group ${
+                                    isSelected ? 'bg-emerald-primary/10 border border-emerald-primary/20' : 'hover:bg-gray-100 border border-transparent'
+                                }`}
+                            >
+                                <div className="relative flex-shrink-0">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${
+                                        isSelected ? 'bg-emerald-primary text-white' : 'bg-gray-200 text-slate-dark group-hover:bg-gray-300'
+                                    }`}>
+                                        {contact.name[0].toUpperCase()}
+                                    </div>
+                                    {isOnline && (
+                                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-primary border-2 border-white rounded-full"></div>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm truncate">{contact.name}</div>
+                                    <div className="text-xs text-gray-500 capitalize truncate">{contact.role}</div>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Right Chat Area */}
+            <div className="flex-1 flex flex-col bg-white relative">
+                {selectedContact ? (
+                    <>
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-white/90 backdrop-blur-sm z-10">
+                            <div className="w-10 h-10 rounded-full bg-slate-dark text-white flex items-center justify-center font-bold mr-4 shadow-sm">
+                                {selectedContact.name[0].toUpperCase()}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-base leading-tight">{selectedContact.name}</h3>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${onlineUsers.has(selectedContact.clerkId) ? 'bg-emerald-primary' : 'bg-gray-300'}`}></div>
+                                    <span className="text-xs text-gray-500 font-medium">
+                                        {onlineUsers.has(selectedContact.clerkId) ? 'Active now' : 'Offline'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Messages */}
+                        <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-surface scrollbar-thin scrollbar-thumb-gray-200">
+                            {messages.map((msg, index) => {
+                                const isMe = msg.senderId === userId;
+                                const isImage = msg.message.startsWith("[IMAGE]");
+                                const rawUrl = msg.message.replace("[IMAGE]", "");
+                                const imageUrl = isImage 
+                                    ? (rawUrl.startsWith("http") ? rawUrl : `${import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, "")}${rawUrl}`) 
+                                    : "";
+
+                                return (
+                                    <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[70%] text-sm ${isImage ? 'p-1 bg-white border border-gray-200' : (isMe ? 'bg-emerald-primary text-white' : 'bg-white border border-gray-200 text-slate-dark')} rounded-2xl shadow-sm ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'} ${!isImage && 'px-4 py-2.5'}`}>
+                                            {isImage ? (
+                                                <img 
+                                                    src={imageUrl} 
+                                                    alt="attachment" 
+                                                    className="max-w-full max-h-72 object-cover rounded-xl cursor-zoom-in hover:opacity-95 transition-opacity" 
+                                                    onClick={() => window.open(imageUrl, '_blank')} 
+                                                />
+                                            ) : (
+                                                <p className="leading-relaxed">{msg.message}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="p-4 bg-white border-t border-gray-100 relative">
+                            
+                            {/* Image Preview Overlay */}
+                            {imagePreviewUrl && (
+                                <div className="absolute bottom-[calc(100%+16px)] left-6 right-6 bg-white border border-gray-200 p-4 rounded-xl shadow-lg flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2">
+                                    <div className="relative">
+                                        <img src={imagePreviewUrl} alt="preview" className={`w-16 h-16 rounded-lg object-cover border-2 border-emerald-primary ${isUploading ? 'opacity-50' : 'opacity-100'}`} />
+                                        {!isUploading && (
+                                            <button 
+                                                onClick={() => { setSelectedImage(null); setImagePreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} 
+                                                className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-sm transition-colors"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="text-sm text-gray-600 font-medium">
+                                        {isUploading ? (
+                                            <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-emerald-primary" /> Uploading securely...</span>
+                                        ) : "Image attached. Add a caption or send."}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-end gap-2 bg-surface p-2 rounded-2xl border border-gray-200 focus-within:border-emerald-primary/50 focus-within:ring-2 focus-within:ring-emerald-primary/10 transition-all">
+                                <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={handleFileSelect} disabled={isUploading} />
+                                
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploading}
+                                    className={`p-3 text-gray-400 hover:text-emerald-primary hover:bg-emerald-primary/10 rounded-xl transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                >
+                                    <Paperclip className="w-5 h-5" />
+                                </button>
+
+                                <textarea
+                                    value={inputText}
+                                    onChange={(e) => setInputText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSend();
+                                        }
+                                    }}
+                                    placeholder={selectedImage ? "Add a caption..." : "Write a message..."}
+                                    disabled={isUploading}
+                                    rows={1}
+                                    className="flex-1 max-h-32 bg-transparent border-none focus:ring-0 resize-none py-3 text-sm outline-none placeholder:text-gray-400 min-h-[44px]"
+                                />
+                                
+                                <button
+                                    onClick={handleSend}
+                                    disabled={isUploading || (!selectedImage && inputText.trim() === "")}
+                                    className={`p-3 rounded-xl flex items-center justify-center transition-all ${
+                                        isUploading || (!selectedImage && inputText.trim() === "")
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                        : 'bg-emerald-primary text-white hover:bg-emerald-hover shadow-sm hover:shadow-md'
+                                    }`}
+                                >
+                                    {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                        <div className="w-16 h-16 bg-emerald-primary/10 text-emerald-primary rounded-2xl flex items-center justify-center mb-4">
+                            <ImageIcon className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-dark mb-2">ReClaim Secure Chat</h2>
+                        <p className="text-sm text-gray-500 max-w-sm">Select a colleague from the sidebar to start collaborating securely.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};

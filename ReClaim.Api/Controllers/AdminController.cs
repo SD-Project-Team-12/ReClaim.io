@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReClaim.Api.Entities;
+using System.Text.Json;
+using System.Text;
+using System.Net.Http;
 
 namespace ReClaim.Api.Controllers
 {
@@ -11,10 +14,14 @@ namespace ReClaim.Api.Controllers
     public class AdminController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config;
 
-        public AdminController(AppDbContext context)
+        public AdminController(AppDbContext context, IHttpClientFactory httpClientFactory, IConfiguration config)
         {
             _context = context;
+            _httpClientFactory = httpClientFactory;
+            _config = config;
         }
 
         // Helper to check if the current user is an admin in our database
@@ -28,10 +35,7 @@ namespace ReClaim.Api.Controllers
         [HttpGet("diagnose")]
         public async Task<IActionResult> Diagnose()
         {
-            // 1. Check the ID coming from your token
             var clerkId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-            // 2. Lookup the user in your DB
             var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId);
 
             return Ok(new
@@ -85,6 +89,7 @@ namespace ReClaim.Api.Controllers
 
             return Ok(requests);
         }
+        
         [HttpGet("pending-applications")]
         public async Task<IActionResult> GetPendingApplications()
         {
@@ -107,11 +112,13 @@ namespace ReClaim.Api.Controllers
             var user = await _context.Users.FirstOrDefaultAsync(u => u.ClerkId == app.ClerkId);
             if (user != null)
             {
-                user.Role = "recycler"; // Promote to Recycler!
+                user.Role = "recycler"; // Promote to Recycler in DB!
+                
+                await UpdateClerkUserMetadata(user.ClerkId, "recycler");
             }
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "User promoted to Recycler successfully." });
+            return Ok(new { message = "User promoted to Recycler successfully and Clerk Metadata updated." });
         }
 
         [HttpPost("apply")]
@@ -128,6 +135,45 @@ namespace ReClaim.Api.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Application submitted successfully!" });
+        }
+
+        private async Task UpdateClerkUserMetadata(string clerkUserId, string role)
+        {
+            var clerkSecretKey = _config["Clerk:SecretKey"];
+            
+            if (string.IsNullOrEmpty(clerkSecretKey))
+            {
+                Console.WriteLine("[ERROR] Clerk SecretKey missing.");
+                return;
+            }
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", clerkSecretKey);
+
+            var url = $"https://api.clerk.com/v1/users/{clerkUserId}/metadata";
+
+            var metadataUpdate = new
+            {
+                public_metadata = new { role = role }
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(metadataUpdate), 
+                Encoding.UTF8, 
+                "application/json"
+            );
+
+            var response = await client.PatchAsync(url, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[SUCCESS] Promoted {clerkUserId} to {role} in Clerk.");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[FAILED] Clerk API Error: {error}");
+            }
         }
     }
 }

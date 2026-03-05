@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import type { JSX } from "react";
 import AdminDashboard from "./features/admin/components/AdminDashboard";
 import VerificationForm from "./features/account/components/VerificationForm";
+import { ChatPage } from './features/chat/pages/ChatPage';
 
 // --- SECURITY WRAPPER ---
 // This intercepts the route, checks the Clerk user's role, and kicks them out if they don't match.
@@ -89,6 +90,14 @@ export default function App() {
             <>
               <SignedIn>
                 <VerificationForm />
+              </SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
+          <Route path="/chat" element={
+            <>
+              <SignedIn>
+                <ChatPage />
               </SignedIn>
               <SignedOut><RedirectToSignIn /></SignedOut>
             </>

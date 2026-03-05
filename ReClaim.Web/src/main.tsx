@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom' // <-- 1. Import this
+import { BrowserRouter } from 'react-router-dom' 
 import App from './App.tsx'
 import './index.css'
 import { ClerkProvider } from '@clerk/clerk-react'

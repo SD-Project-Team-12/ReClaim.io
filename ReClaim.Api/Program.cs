@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReClaim.Api;
 using ReClaim.Api.Services;
+using ReClaim.Api.Hubs;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.SignalR;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Prevents default claim type mapping (e.g., "sub" to ClaimTypes.NameIdentifier)
 
@@ -17,9 +19,13 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins("http://localhost:5173")
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
+
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -60,10 +66,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 Console.WriteLine("Token validated successfully!");
                 return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chathub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
             }
         };
+        
     });
-
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IPriceEstimationService, HeuristicPriceService>();
 
 var app = builder.Build();
@@ -91,12 +109,25 @@ if (app.Environment.IsDevelopment())
 
 // app.UseHttpsRedirection();
 
-// 3. Apply CORS before Auth
 app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/chathub");
 
-app.Run();
+app.Run(); 
+
+public class CustomUserIdProvider : Microsoft.AspNetCore.SignalR.IUserIdProvider
+{
+    public string? GetUserId(Microsoft.AspNetCore.SignalR.HubConnectionContext connection)
+    {
+        var userId = connection.User?.FindFirst("sub")?.Value 
+                  ?? connection.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        
+        Console.WriteLine($"\n[SIGNALR] Connected User ID: {userId}\n");
+        
+        return userId;
+    }
+}
