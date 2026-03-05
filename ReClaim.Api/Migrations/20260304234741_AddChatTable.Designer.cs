@@ -13,8 +13,8 @@ using ReClaim.Api;
 namespace ReClaim.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260227203845_Initial_Recovery_Final")]
-    partial class Initial_Recovery_Final
+    [Migration("20260304234741_AddChatTable")]
+    partial class AddChatTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,6 +26,34 @@ namespace ReClaim.Api.Migrations
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("ReClaim.Api.Entities.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReceiverId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ChatMessages");
+                });
 
             modelBuilder.Entity("ReClaim.Api.Entities.Logistics", b =>
                 {

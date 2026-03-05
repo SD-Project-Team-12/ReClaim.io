@@ -7,7 +7,7 @@ using NetTopologySuite.Geometries;
 namespace ReClaim.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial_Recovery_Final : Migration
+    public partial class initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

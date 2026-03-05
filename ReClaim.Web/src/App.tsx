@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import type { JSX } from "react";
 import AdminDashboard from "./features/admin/components/AdminDashboard";
 import VerificationForm from "./features/account/components/VerificationForm";
+import { ChatPage } from './features/chat/pages/ChatPage';
 import RequestDetails from "./pages/RequestDetails";
 
 // --- SECURITY WRAPPER ---
@@ -94,6 +95,15 @@ export default function App() {
               <SignedOut><RedirectToSignIn /></SignedOut>
             </>
           } />
+          <Route path="/chat" element={
+            <>
+              <SignedIn>
+                <ChatPage />
+              </SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
+        </Routes>
           <Route path="/request/:id" element={
           <>
             <SignedIn><RequestDetails /></SignedIn>

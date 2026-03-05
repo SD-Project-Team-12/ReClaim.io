@@ -14,6 +14,7 @@ namespace ReClaim.Api
         public DbSet<Logistics> Logistics { get; set; }
         public DbSet<PickUpRequest> PickUpRequests { get; set; }
         public DbSet<RecyclerApplication> RecyclerApplications { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
