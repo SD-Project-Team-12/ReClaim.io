@@ -80,6 +80,7 @@ export default function App() {
               <SignedOut><RedirectToSignIn /></SignedOut>
             </>
           } />
+
           <Route path="/admin" element={
             <SignedIn>
               <RequireRole allowedRoles={["admin"]}>
@@ -87,6 +88,7 @@ export default function App() {
               </RequireRole>
             </SignedIn>
           } />
+
           <Route path="/verify" element={
             <>
               <SignedIn>
@@ -95,6 +97,7 @@ export default function App() {
               <SignedOut><RedirectToSignIn /></SignedOut>
             </>
           } />
+
           <Route path="/chat" element={
             <>
               <SignedIn>
@@ -103,19 +106,20 @@ export default function App() {
               <SignedOut><RedirectToSignIn /></SignedOut>
             </>
           } />
-        </Routes>
+
+          {/* This route is now inside the correct Routes block */}
           <Route path="/request/:id" element={
-          <>
-            <SignedIn><RequestDetails /></SignedIn>
-            <SignedOut><RedirectToSignIn /></SignedOut>
-          </>
-        } />
+            <>
+              <SignedIn><RequestDetails /></SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
         </Routes>        
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-8 text-center text-sm font-medium text-slate-500 mt-auto">
+      <div className="bg-white border-t border-slate-200 py-8 text-center text-sm font-medium text-slate-500 mt-auto" role="contentinfo">
         <p>&copy; {new Date().getFullYear()} ReClaim.io - Intelligent E-Waste Logistics</p>
-      </footer>
+      </div>
     </div>
   );
 }
