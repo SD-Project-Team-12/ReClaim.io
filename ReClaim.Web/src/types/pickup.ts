@@ -32,6 +32,7 @@ export interface PickUpRequest {
   latitude: number;
   longitude: number;
   preferredPickUpTime: string;
+  imageUrls?: string[];
   status?: RequestStatusType;
   createdAt?: string;
 }
