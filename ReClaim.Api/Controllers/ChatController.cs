@@ -30,24 +30,9 @@ namespace ReClaim.Api.Controllers
             if (myUser == null)
                 return NotFound("User not found in database");
 
-            var myRole = myUser.Role?.ToLower() ?? "citizen";
-
+            // Removed role checks so users can chat with sellers (other citizens) on marketplace
             var contactsQuery = _context.Users.Where(u => u.ClerkId != myClerkId);
 
-            if (myRole == "citizen")
-            {
-                contactsQuery = contactsQuery.Where(u =>
-                    u.Role.ToLower() == "recycler" || u.Role.ToLower() == "admin"
-                );
-            }
-            else if (myRole == "recycler")
-            {
-                contactsQuery = contactsQuery.Where(u =>
-                    u.Role.ToLower() == "admin" || u.Role.ToLower() == "citizen"
-                );
-            }
-
-            // Subquery determines latest message for sorting
             var contacts = await contactsQuery
                 .Select(u => new
                 {
@@ -63,16 +48,16 @@ namespace ReClaim.Api.Controllers
                             || (m.SenderId == u.ClerkId && m.ReceiverId == myClerkId)
                         )
                         .Max(m => (DateTime?)m.Timestamp)
-                        ?? DateTime.MinValue, // Fallback for no messages
+                        ?? DateTime.MinValue,
                 })
-                .OrderByDescending(c => c.LastMessageTime) // Sort by latest activity
+                .OrderByDescending(c => c.LastMessageTime)
                 .Select(c => new
                 {
                     c.ClerkId,
                     c.Name,
                     c.Role,
                     c.Email,
-                }) // Strip time for response payload
+                })
                 .ToListAsync();
 
             return Ok(contacts);
@@ -98,7 +83,7 @@ namespace ReClaim.Api.Controllers
                     senderId = m.SenderId,
                     message = m.Message,
                     timestamp = m.Timestamp,
-                    isRead = m.IsRead, // <-- NEW
+                    isRead = m.IsRead,
                 })
                 .ToListAsync();
 

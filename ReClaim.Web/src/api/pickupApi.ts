@@ -86,3 +86,12 @@ export const getRequestById = async (id: string, token: string | null) => {
     if (!response.ok) throw new Error("Failed to fetch request details");
     return response.json();
 };
+
+// NEW: Fetch marketplace items
+export const getMarketplaceItems = async (token: string | null) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/marketplace`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error("Failed to fetch marketplace items");
+    return response.json();
+};

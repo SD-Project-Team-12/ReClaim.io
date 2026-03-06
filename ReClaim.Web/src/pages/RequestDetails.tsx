@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import { 
  ArrowLeft, MapPin, Cpu, Weight, Zap, ImageOff, Loader2, 
- Clock, CheckCircle, Navigation, Phone, Mail, Truck, User as UserIcon 
+ Clock, CheckCircle, Navigation, Phone, Mail, Truck, User as UserIcon, MessageSquare // <-- Added MessageSquare
 } from "lucide-react";
 import { getRequestById, updateRequestStatus, claimPickUpRequest } from "../api/pickupApi";
 
@@ -71,7 +71,7 @@ export default function RequestDetails() {
  return (
   <div className="max-w-5xl mx-auto animate-in fade-in duration-500 pb-12 px-4">
    <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 mb-6 transition-colors group">
-    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Dispatch
+    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back
    </button>
 
    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -135,17 +135,40 @@ export default function RequestDetails() {
       <a href={`https://www.google.com/maps/dir/?api=1&destination=${request.latitude},${request.longitude}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase hover:bg-emerald-700 active:scale-95 shadow-md"><Navigation size={14} /> Start Navigation</a>
      </div>
 
-     {request.status > 0 && (
-      <div className="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-slate-200 border-l-4 border-emerald-500 grid grid-cols-2 gap-4">
-       <div className="col-span-2 text-xs font-black text-slate-400 uppercase flex gap-2"><UserIcon size={14}/> Registered Dispatch Contact</div>
-       <div className="col-span-2 flex items-center gap-3 bg-slate-50 p-3 rounded-xl">
-        <div className="w-10 h-10 bg-slate-900 text-emerald-400 rounded-full flex items-center justify-center font-black text-lg">{contactInfo.name?.charAt(0)}</div>
-        <p className="font-black text-slate-900 truncate">{contactInfo.name}</p>
-       </div>
-       <a href={`tel:${contactInfo.phone}`} className="flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase hover:bg-black active:scale-95"><Phone size={14}/> Call</a>
-       <a href={`https://wa.me/${contactInfo.phone.replace(/\+/g, '')}?text=Hi%20${contactInfo.name},%20I'm%20the%20ReClaim%20recycler%20on%20my%20way%20to%20pick%20up%20your%20${request.category}!`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 py-3.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-100 active:scale-95"><Mail size={14}/> WhatsApp</a>
-      </div>
-     )}
+     {/* SELLER & CONTACT INFORMATION */}
+     <div className="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-slate-200 border-l-4 border-emerald-500 grid grid-cols-2 gap-4">
+        <div className="col-span-2 text-xs font-black text-slate-400 uppercase flex gap-2">
+            <UserIcon size={14}/> Seller Information
+        </div>
+        
+        <div className="col-span-2 flex items-center justify-between bg-slate-50 p-3 rounded-xl">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-900 text-emerald-400 rounded-full flex items-center justify-center font-black text-lg">
+                    {contactInfo.name?.charAt(0) || "U"}
+                </div>
+                <div>
+                    <p className="font-black text-slate-900 truncate">{contactInfo.name}</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Member</p>
+                </div>
+            </div>
+            
+            <button 
+                onClick={() => navigate('/chat', { 
+                    state: { preselectUserId: request.citizenId, preselectUserName: contactInfo.name } 
+                })}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors rounded-lg text-xs font-black uppercase"
+            >
+                <MessageSquare size={14} /> Message
+            </button>
+        </div>
+
+        {request.status > 0 && (
+            <>
+                <a href={`tel:${contactInfo.phone}`} className="flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase hover:bg-black active:scale-95"><Phone size={14}/> Call</a>
+                <a href={`https://wa.me/${contactInfo.phone.replace(/\+/g, '')}?text=Hi%20${contactInfo.name}...`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 py-3.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-100 active:scale-95"><Mail size={14}/> WhatsApp</a>
+            </>
+        )}
+     </div>
     </div>
    </div>
   </div>

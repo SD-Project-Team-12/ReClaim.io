@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import RequestHistory from "./features/pickup/components/RequestHistory";
 import FleetDashboard from "./features/pickup/components/FleetDashboard";
+import Marketplace from "./pages/Marketplace"; // <-- Added Import
 import { Loader2 } from "lucide-react";
 import type { JSX } from "react";
 import AdminDashboard from "./features/admin/components/AdminDashboard";
@@ -69,6 +70,14 @@ export default function App() {
             </>
           } />
 
+          {/* NEW: Marketplace Route */}
+          <Route path="/marketplace" element={
+            <>
+              <SignedIn><Marketplace /></SignedIn>
+              <SignedOut><RedirectToSignIn /></SignedOut>
+            </>
+          } />
+
           {/* Recycler / Admin Routes */}
           <Route path="/fleet" element={
             <>
@@ -107,7 +116,6 @@ export default function App() {
             </>
           } />
 
-          {/* This route is now inside the correct Routes block */}
           <Route path="/request/:id" element={
             <>
               <SignedIn><RequestDetails /></SignedIn>

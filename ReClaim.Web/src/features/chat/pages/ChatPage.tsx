@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import { useLocation } from 'react-router-dom'; // <-- Added hook
 import * as signalR from '@microsoft/signalr';
-import { Search, Send, Paperclip, X, Image as ImageIcon, Loader2, Check, CheckCheck } from 'lucide-react'; // <-- Added Check icons
+import { Search, Send, Paperclip, X, Image as ImageIcon, Loader2, Check, CheckCheck } from 'lucide-react'; 
 import { uploadImageToCloud } from '../../../utils/uploadService'; 
 import { getContacts, getChatHistory } from '../../../api/chatApi'; 
 
@@ -16,11 +17,12 @@ interface ChatMessage {
     senderId: string;
     message: string;
     timestamp?: string;
-    isRead?: boolean; // <-- Added
+    isRead?: boolean; 
 }
 
 export const ChatPage = () => {
     const { getToken, userId } = useAuth();
+    const location = useLocation(); // <-- Added useLocation
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
@@ -58,14 +60,35 @@ export const ChatPage = () => {
             if (token) {
                 try {
                     const data = await getContacts(token);
-                    setContacts(data);
+                    
+                    // Handle incoming "Message Seller" navigation
+                    const preselectedState = location.state as { preselectUserId?: string, preselectUserName?: string };
+                    
+                    if (preselectedState?.preselectUserId) {
+                        const preId = preselectedState.preselectUserId;
+                        const preName = preselectedState.preselectUserName || "Seller";
+                        
+                        let existingContact = data.find((c: any) => c.clerkId === preId);
+                        
+                        if (!existingContact) {
+                            existingContact = { clerkId: preId, name: preName, role: "Seller", email: "Marketplace Contact" };
+                            data.unshift(existingContact); 
+                        }
+                        
+                        setContacts(data);
+                        setSelectedContact(existingContact); 
+                        
+                        window.history.replaceState({}, document.title);
+                    } else {
+                        setContacts(data);
+                    }
                 } catch (error) {
                     console.error("Failed to fetch contacts:", error);
                 }
             }
         };
         fetchContacts();
-    }, [getToken]);
+    }, [getToken, location.state]);
 
     useEffect(() => {
         let isMounted = true;
@@ -82,16 +105,13 @@ export const ChatPage = () => {
                 .withAutomaticReconnect()
                 .build();
 
-            // Updated ReceiveMessage to handle isRead
             currentConnection.on("ReceiveMessage", (senderId: string, message: string, timestamp: string, isRead: boolean) => {
                 setMessages(prev => [...prev, { senderId, message, timestamp, isRead }]);
                 promoteContactToTop(senderId); 
             });
 
-            // NEW: Listener for when the other person reads your messages
             currentConnection.on("MessagesRead", (readerId: string) => {
                 setMessages(prev => prev.map(m => 
-                    // If we sent the message, and it's currently showing, mark it as read
                     (m.senderId === userId) ? { ...m, isRead: true } : m
                 ));
             });
@@ -138,7 +158,7 @@ export const ChatPage = () => {
             if (currentConnection) {
                 currentConnection.off("ReceiveMessage");
                 currentConnection.off("ReceiveTyping");
-                currentConnection.off("MessagesRead"); // Cleanup
+                currentConnection.off("MessagesRead"); 
                 currentConnection.stop();
             }
         };
@@ -163,15 +183,11 @@ export const ChatPage = () => {
         fetchHistory();
     }, [selectedContact, getToken]);
 
-    // NEW: Auto-Read Logic
-    // Whenever messages change or a contact is selected, check if we need to tell the server we read them
     useEffect(() => {
         if (selectedContact && connection) {
             const unreadFromContact = messages.some(m => m.senderId === selectedContact.clerkId && !m.isRead);
             if (unreadFromContact) {
-                // Tell server
                 connection.invoke("MarkMessagesAsRead", selectedContact.clerkId);
-                // Optimistically update local state
                 setMessages(prev => prev.map(m => 
                     m.senderId === selectedContact.clerkId ? { ...m, isRead: true } : m
                 ));
@@ -222,7 +238,6 @@ export const ChatPage = () => {
                 if (cloudinaryUrl) {
                     const imageMessage = `[IMAGE]${cloudinaryUrl}`;
                     await connection.invoke("SendMessage", targetClerkId, imageMessage);
-                    // Added isRead: false for our own UI
                     setMessages(prev => [...prev, { senderId: userId || "", message: imageMessage, timestamp: localTimestamp, isRead: false }]);
 
                     if (inputText.trim() !== "") {
@@ -360,7 +375,6 @@ export const ChatPage = () => {
                                                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 )}
-                                                {/* NEW: Read Receipts for My Messages */}
                                                 {isMe && (
                                                     msg.isRead ? (
                                                         <CheckCheck className="w-3.5 h-3.5 text-blue-500" />

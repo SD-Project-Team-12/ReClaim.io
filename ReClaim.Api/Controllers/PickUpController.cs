@@ -82,6 +82,19 @@ namespace ReClaim.Api.Controllers
             return Ok(requests);
         }
 
+        // GET ALL PENDING ITEMS FOR MARKETPLACE
+        [HttpGet("marketplace")]
+        [Authorize]
+        public async Task<IActionResult> GetMarketplaceItems()
+        {
+            var items = await _context.PickUpRequests
+                .Where(req => req.Status == RequestStatus.Pending)
+                .OrderByDescending(req => req.CreatedAt)
+                .ToListAsync();
+
+            return Ok(items);
+        }
+
         // 1. GET ALL PENDING PINS FOR THE FLEET MAP
         [HttpGet("pending")]
         [Authorize] // You can restrict this to Recyclers/Admins later!
@@ -225,5 +238,4 @@ namespace ReClaim.Api.Controllers
             return Ok(dto);
         }
     }
-
 }

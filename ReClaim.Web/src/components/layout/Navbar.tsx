@@ -1,6 +1,6 @@
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Clock, ShieldAlert, Truck, MessageSquare } from "lucide-react"; // <-- Added MessageSquare
+import { LayoutDashboard, Clock, ShieldAlert, Truck, MessageSquare, Store } from "lucide-react"; // <-- Added Store
 
 export default function Navbar() {
     const { user } = useUser();
@@ -20,11 +20,16 @@ export default function Navbar() {
                         <Link to="/dashboard" className="hidden md:flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors">
                             <LayoutDashboard size={16} /> Dashboard
                         </Link>
+                        
+                        {/* NEW: Marketplace Link */}
+                        <Link to="/marketplace" className="hidden md:flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors">
+                            <Store size={16} /> Marketplace
+                        </Link>
+
                         <Link to="/history" className="hidden md:flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors">
                             <Clock size={16} /> My Pickups
                         </Link>
                         
-                        {/* NEW: Chat Link */}
                         <Link to="/chat" className="hidden md:flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors">
                             <MessageSquare size={16} /> Chat
                         </Link>
