@@ -121,6 +121,16 @@ namespace ReClaim.Api.Controllers
             var clerkId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (clerkId == null) return Unauthorized();
 
+            var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId);
+            if (currentUser == null) return NotFound("User not found in database.");
+
+            var userRole = currentUser.Role?.ToLower() ?? "citizen";
+
+            if (userRole != "recycler" && userRole != "admin")
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Access Denied: Only recyclers or admins can assign routes." });
+            }
+
             request.Status = (RequestStatus)1;
             request.RecyclerId = clerkId;
 

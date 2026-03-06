@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import { 
@@ -29,12 +29,14 @@ export default function RequestDetails() {
  const { id } = useParams<{ id: string }>();
  const navigate = useNavigate();
  const { getToken } = useAuth();
+ const { user } = useUser();
  
  const [request, setRequest] = useState<any>(null);
  const [contactInfo, setContactInfo] = useState({ name: "", phone: "" });
  const [loading, setLoading] = useState(true);
  const [isUpdating, setIsUpdating] = useState(false);
  const [activeImage, setActiveImage] = useState<string | null>(null);
+ const userRole = user?.publicMetadata?.role as string || "citizen";
 
  useEffect(() => {
   (async () => {
@@ -97,7 +99,8 @@ export default function RequestDetails() {
     </div>
 
     <div className="space-y-6">
-     {request.status < 3 && (
+     
+     {request.status < 3 && (userRole === "admin" || userRole === "recycler") && (
       <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-slate-200 border-t-4 border-slate-900">
        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-3">Logistics Actions</p>
        {request.status === 0 && <button onClick={() => handleAction("claim")} disabled={isUpdating} className="w-full py-4 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 disabled:opacity-50"><CheckCircle size={16}/> Assign to My Route</button>}
