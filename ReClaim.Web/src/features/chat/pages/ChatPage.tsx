@@ -271,7 +271,7 @@ export const ChatPage = () => {
     );
 
     return (
-        <div style={{ height: 'calc(100vh - 85px)' }} className="flex max-w-[1250px] mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden text-slate-dark mt-2 mb-2">
+        <div style={{ height: 'calc(95vh - 220px)' }} className="flex w-full max-w-[1250px] mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden text-slate-dark">
             
             <div className="w-80 border-r border-gray-100 bg-surface flex flex-col z-10 h-full">
                 <div className="p-6 border-b border-gray-100 bg-white shrink-0">
@@ -290,6 +290,7 @@ export const ChatPage = () => {
                     </div>
                 </div>
 
+                {/* Sidebar Scroll Area */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-200">
                     {filteredContacts.map((contact) => {
                         const isSelected = selectedContact?.clerkId === contact.clerkId;
@@ -344,6 +345,7 @@ export const ChatPage = () => {
                             </div>
                         </div>
 
+                        {/* Chat Messages Scroll Area */}
                         <div className="flex-1 min-h-0 p-6 overflow-y-auto space-y-6 bg-surface scrollbar-thin scrollbar-thumb-gray-200">
                             {messages.map((msg, index) => {
                                 const isMe = msg.senderId === userId;
