@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import * as signalR from '@microsoft/signalr';
-import { Search, Send, Paperclip, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Search, Send, Paperclip, X, Image as ImageIcon, Loader2, Check, CheckCheck } from 'lucide-react'; // <-- Added Check icons
 import { uploadImageToCloud } from '../../../utils/uploadService'; 
 import { getContacts, getChatHistory } from '../../../api/chatApi'; 
 
@@ -15,10 +15,11 @@ interface Contact {
 interface ChatMessage {
     senderId: string;
     message: string;
+    timestamp?: string;
+    isRead?: boolean; // <-- Added
 }
 
 export const ChatPage = () => {
-    // --- BUSINESS LOGIC (UNCHANGED) ---
     const { getToken, userId } = useAuth();
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -28,12 +29,28 @@ export const ChatPage = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
+    const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const promoteContactToTop = (targetClerkId: string) => {
+        setContacts(prevContacts => {
+            const index = prevContacts.findIndex(c => c.clerkId === targetClerkId);
+            if (index <= 0) return prevContacts; 
+            
+            const newContacts = [...prevContacts];
+            const movedContact = newContacts[index];
+            newContacts.splice(index, 1);
+            newContacts.unshift(movedContact); 
+            return newContacts;
+        });
+    };
 
     useEffect(() => {
         const fetchContacts = async () => {
@@ -65,8 +82,27 @@ export const ChatPage = () => {
                 .withAutomaticReconnect()
                 .build();
 
-            currentConnection.on("ReceiveMessage", (senderId: string, message: string) => {
-                setMessages(prev => [...prev, { senderId, message }]);
+            // Updated ReceiveMessage to handle isRead
+            currentConnection.on("ReceiveMessage", (senderId: string, message: string, timestamp: string, isRead: boolean) => {
+                setMessages(prev => [...prev, { senderId, message, timestamp, isRead }]);
+                promoteContactToTop(senderId); 
+            });
+
+            // NEW: Listener for when the other person reads your messages
+            currentConnection.on("MessagesRead", (readerId: string) => {
+                setMessages(prev => prev.map(m => 
+                    // If we sent the message, and it's currently showing, mark it as read
+                    (m.senderId === userId) ? { ...m, isRead: true } : m
+                ));
+            });
+
+            currentConnection.on("ReceiveTyping", (senderId: string, isTyping: boolean) => {
+                setTypingUsers(prev => {
+                    const next = new Set(prev);
+                    if (isTyping) next.add(senderId);
+                    else next.delete(senderId);
+                    return next;
+                });
             });
 
             currentConnection.on("UserConnected", (connectedUserId: string) => {
@@ -101,10 +137,12 @@ export const ChatPage = () => {
             isMounted = false;
             if (currentConnection) {
                 currentConnection.off("ReceiveMessage");
+                currentConnection.off("ReceiveTyping");
+                currentConnection.off("MessagesRead"); // Cleanup
                 currentConnection.stop();
             }
         };
-    }, [getToken]);
+    }, [getToken, userId]);
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -125,6 +163,22 @@ export const ChatPage = () => {
         fetchHistory();
     }, [selectedContact, getToken]);
 
+    // NEW: Auto-Read Logic
+    // Whenever messages change or a contact is selected, check if we need to tell the server we read them
+    useEffect(() => {
+        if (selectedContact && connection) {
+            const unreadFromContact = messages.some(m => m.senderId === selectedContact.clerkId && !m.isRead);
+            if (unreadFromContact) {
+                // Tell server
+                connection.invoke("MarkMessagesAsRead", selectedContact.clerkId);
+                // Optimistically update local state
+                setMessages(prev => prev.map(m => 
+                    m.senderId === selectedContact.clerkId ? { ...m, isRead: true } : m
+                ));
+            }
+        }
+    }, [messages, selectedContact, connection]);
+
     useEffect(() => {
         setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -139,8 +193,26 @@ export const ChatPage = () => {
         }
     };
 
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setInputText(e.target.value);
+        if (connection && selectedContact) {
+            connection.invoke("NotifyTyping", selectedContact.clerkId, true);
+            
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+                connection.invoke("NotifyTyping", selectedContact.clerkId, false);
+            }, 2000); 
+        }
+    };
+
     const handleSend = async () => {
         if (!selectedContact || !connection || isUploading) return;
+
+        const targetClerkId = selectedContact.clerkId;
+        const localTimestamp = new Date().toISOString(); 
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        await connection.invoke("NotifyTyping", targetClerkId, false);
 
         if (selectedImage) {
             setIsUploading(true);
@@ -149,15 +221,16 @@ export const ChatPage = () => {
 
                 if (cloudinaryUrl) {
                     const imageMessage = `[IMAGE]${cloudinaryUrl}`;
-                    await connection.invoke("SendMessage", selectedContact.clerkId, imageMessage);
-                    setMessages(prev => [...prev, { senderId: userId || "", message: imageMessage }]);
+                    await connection.invoke("SendMessage", targetClerkId, imageMessage);
+                    // Added isRead: false for our own UI
+                    setMessages(prev => [...prev, { senderId: userId || "", message: imageMessage, timestamp: localTimestamp, isRead: false }]);
 
                     if (inputText.trim() !== "") {
-                        await connection.invoke("SendMessage", selectedContact.clerkId, inputText);
-                        setMessages(prev => [...prev, { senderId: userId || "", message: inputText }]);
+                        await connection.invoke("SendMessage", targetClerkId, inputText);
+                        setMessages(prev => [...prev, { senderId: userId || "", message: inputText, timestamp: localTimestamp, isRead: false }]);
                     }
-                } else {
-                    console.error("Image upload to Cloudinary failed.");
+                    
+                    promoteContactToTop(targetClerkId); 
                 }
             } catch (error) {
                 console.error("Error sending image:", error);
@@ -170,9 +243,10 @@ export const ChatPage = () => {
             }
         } 
         else if (inputText.trim() !== "") {
-            await connection.invoke("SendMessage", selectedContact.clerkId, inputText);
-            setMessages(prev => [...prev, { senderId: userId || "", message: inputText }]);
+            await connection.invoke("SendMessage", targetClerkId, inputText);
+            setMessages(prev => [...prev, { senderId: userId || "", message: inputText, timestamp: localTimestamp, isRead: false }]);
             setInputText("");
+            promoteContactToTop(targetClerkId); 
         }
     };
 
@@ -180,14 +254,12 @@ export const ChatPage = () => {
         c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    // --- END BUSINESS LOGIC ---
 
     return (
-        <div className="flex h-[85vh] max-w-[1250px] mx-auto my-8 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden text-slate-dark">
+        <div style={{ height: 'calc(100vh - 85px)' }} className="flex max-w-[1250px] mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden text-slate-dark mt-2 mb-2">
             
-            {/* Left Sidebar */}
-            <div className="w-80 border-r border-gray-100 bg-surface flex flex-col z-10">
-                <div className="p-6 border-b border-gray-100 bg-white">
+            <div className="w-80 border-r border-gray-100 bg-surface flex flex-col z-10 h-full">
+                <div className="p-6 border-b border-gray-100 bg-white shrink-0">
                     <h2 className="text-xl font-bold tracking-tight">Messages</h2>
                     <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-1">ReClaim.io Network</p>
                     
@@ -203,7 +275,7 @@ export const ChatPage = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-200">
+                <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-200">
                     {filteredContacts.map((contact) => {
                         const isSelected = selectedContact?.clerkId === contact.clerkId;
                         const isOnline = onlineUsers.has(contact.clerkId);
@@ -227,7 +299,11 @@ export const ChatPage = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="font-semibold text-sm truncate">{contact.name}</div>
-                                    <div className="text-xs text-gray-500 capitalize truncate">{contact.role}</div>
+                                    {typingUsers.has(contact.clerkId) ? (
+                                        <div className="text-xs text-emerald-600 font-medium italic truncate">Typing...</div>
+                                    ) : (
+                                        <div className="text-xs text-gray-500 capitalize truncate">{contact.role}</div>
+                                    )}
                                 </div>
                             </button>
                         );
@@ -235,12 +311,10 @@ export const ChatPage = () => {
                 </div>
             </div>
 
-            {/* Right Chat Area */}
-            <div className="flex-1 flex flex-col bg-white relative">
+            <div className="flex-1 flex flex-col bg-white relative min-w-0 h-full">
                 {selectedContact ? (
                     <>
-                        {/* Header */}
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-white/90 backdrop-blur-sm z-10">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-white/90 backdrop-blur-sm z-10 shrink-0">
                             <div className="w-10 h-10 rounded-full bg-slate-dark text-white flex items-center justify-center font-bold mr-4 shadow-sm">
                                 {selectedContact.name[0].toUpperCase()}
                             </div>
@@ -255,8 +329,7 @@ export const ChatPage = () => {
                             </div>
                         </div>
 
-                        {/* Messages */}
-                        <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-surface scrollbar-thin scrollbar-thumb-gray-200">
+                        <div className="flex-1 min-h-0 p-6 overflow-y-auto space-y-6 bg-surface scrollbar-thin scrollbar-thumb-gray-200">
                             {messages.map((msg, index) => {
                                 const isMe = msg.senderId === userId;
                                 const isImage = msg.message.startsWith("[IMAGE]");
@@ -267,28 +340,56 @@ export const ChatPage = () => {
 
                                 return (
                                     <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[70%] text-sm ${isImage ? 'p-1 bg-white border border-gray-200' : (isMe ? 'bg-emerald-primary text-white' : 'bg-white border border-gray-200 text-slate-dark')} rounded-2xl shadow-sm ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'} ${!isImage && 'px-4 py-2.5'}`}>
-                                            {isImage ? (
-                                                <img 
-                                                    src={imageUrl} 
-                                                    alt="attachment" 
-                                                    className="max-w-full max-h-72 object-cover rounded-xl cursor-zoom-in hover:opacity-95 transition-opacity" 
-                                                    onClick={() => window.open(imageUrl, '_blank')} 
-                                                />
-                                            ) : (
-                                                <p className="leading-relaxed">{msg.message}</p>
-                                            )}
+                                        <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
+                                            <div className={`text-sm ${isImage ? 'p-1 bg-white border border-gray-200' : (isMe ? 'bg-emerald-primary text-white' : 'bg-white border border-gray-200 text-slate-dark')} rounded-2xl shadow-sm ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'} ${!isImage && 'px-4 py-2.5'}`}>
+                                                {isImage ? (
+                                                    <img 
+                                                        src={imageUrl} 
+                                                        alt="attachment" 
+                                                        className="max-w-full max-h-72 object-cover rounded-xl cursor-zoom-in hover:opacity-95 transition-opacity" 
+                                                        onClick={() => window.open(imageUrl, '_blank')} 
+                                                    />
+                                                ) : (
+                                                    <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-1 mt-1 px-1">
+                                                {msg.timestamp && (
+                                                    <span className="text-[10px] text-gray-400">
+                                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                )}
+                                                {/* NEW: Read Receipts for My Messages */}
+                                                {isMe && (
+                                                    msg.isRead ? (
+                                                        <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
+                                                    ) : (
+                                                        <Check className="w-3.5 h-3.5 text-gray-400" />
+                                                    )
+                                                )}
+                                            </div>
+
                                         </div>
                                     </div>
                                 );
                             })}
+                            
+                            {typingUsers.has(selectedContact.clerkId) && (
+                                <div className="flex justify-start">
+                                    <div className="bg-gray-100 text-gray-500 px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm italic flex gap-1 items-center">
+                                        <span className="animate-pulse">.</span>
+                                        <span className="animate-pulse delay-75">.</span>
+                                        <span className="animate-pulse delay-150">.</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input Area */}
-                        <div className="p-4 bg-white border-t border-gray-100 relative">
+                        <div className="p-4 bg-white border-t border-gray-100 relative shrink-0">
                             
-                            {/* Image Preview Overlay */}
                             {imagePreviewUrl && (
                                 <div className="absolute bottom-[calc(100%+16px)] left-6 right-6 bg-white border border-gray-200 p-4 rounded-xl shadow-lg flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2">
                                     <div className="relative">
@@ -323,7 +424,7 @@ export const ChatPage = () => {
 
                                 <textarea
                                     value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
+                                    onChange={handleInputChange} 
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
@@ -356,7 +457,7 @@ export const ChatPage = () => {
                             <ImageIcon className="w-8 h-8" />
                         </div>
                         <h2 className="text-xl font-bold text-slate-dark mb-2">ReClaim Secure Chat</h2>
-                        <p className="text-sm text-gray-500 max-w-sm">Select a colleague from the sidebar to start collaborating securely.</p>
+                        <p className="text-sm text-gray-500 max-w-sm">Select a contact from the sidebar to start collaborating securely.</p>
                     </div>
                 )}
             </div>
