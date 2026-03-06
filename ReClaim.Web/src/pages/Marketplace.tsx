@@ -30,10 +30,10 @@ export default function Marketplace() {
 
     return (
         <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
-            <div className="mb-8">
+            {/* <div className="mb-8">
                 <h1 className="text-3xl font-black text-slate-900 tracking-tight">Marketplace</h1>
                 <p className="text-slate-500 mt-2 font-medium">Discover e-waste components and materials listed by the community.</p>
-            </div>
+            </div> */}
 
             {items.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
