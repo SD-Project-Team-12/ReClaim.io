@@ -56,16 +56,22 @@ export const deletePickUpRequest = async (id: string, token: string | null) => {
     return response;
 };
 
-// Fetch requests claimed by the logged-in recycler
 export const getMyAssignments = async (token: string | null) => {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/my-assignments`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error("Failed to fetch assignments");
-    return response.json();
+  if (!token) throw new Error("No authentication token found");
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  const apiUrl = baseUrl.endsWith('/api') 
+    ? `${baseUrl}/PickUp/my-assignments`
+    : `${baseUrl}/api/PickUp/my-assignments`;
+
+  const response = await fetch(apiUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) throw new Error(`Failed to fetch assignments: ${response.statusText}`);
+  return response.json();
 };
 
-// Update status (e.g., from Assigned to Picked Up)
 export const updateRequestStatus = async (id: string, newStatus: number, token: string | null) => {
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/${id}/status`, {
         method: "PUT",
@@ -78,7 +84,7 @@ export const updateRequestStatus = async (id: string, newStatus: number, token: 
     return response;
 };
 
-// Fetch a single request by its ID
+
 export const getRequestById = async (id: string, token: string | null) => {
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -87,11 +93,37 @@ export const getRequestById = async (id: string, token: string | null) => {
     return response.json();
 };
 
-// NEW: Fetch marketplace items
-export const getMarketplaceItems = async (token: string | null) => {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pickup/marketplace`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error("Failed to fetch marketplace items");
-    return response.json();
+
+export const getMarketplaceItems = async (token: string, page: number = 1, pageSize: number = 12) => {
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL; 
+  
+  const apiUrl = baseUrl.endsWith('/api') 
+    ? `${baseUrl}/PickUp/marketplace?page=${page}&pageSize=${pageSize}`
+    : `${baseUrl}/api/PickUp/marketplace?page=${page}&pageSize=${pageSize}`;
+
+  const response = await fetch(apiUrl, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  
+  if (!response.ok) throw new Error("Failed to fetch marketplace items");
+  
+  return response.json(); 
+};
+export const getUserAnalytics = async (token: string | null) => {
+  if (!token) throw new Error("No authentication token found");
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  
+  const apiUrl = baseUrl.endsWith('/api') 
+    ? `${baseUrl}/Analytics/user-stats`
+    : `${baseUrl}/api/Analytics/user-stats`;
+
+  const response = await fetch(apiUrl, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  
+  if (!response.ok) throw new Error("Failed to fetch analytics");
+  
+  return response.json(); 
 };

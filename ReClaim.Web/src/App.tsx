@@ -5,13 +5,19 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import RequestHistory from "./features/pickup/components/RequestHistory";
 import FleetDashboard from "./features/pickup/components/FleetDashboard";
-import Marketplace from "./pages/Marketplace"; // <-- Added Import
+import Marketplace from "./pages/Marketplace"; 
 import { Loader2 } from "lucide-react";
 import type { JSX } from "react";
 import AdminDashboard from "./features/admin/components/AdminDashboard";
 import VerificationForm from "./features/account/components/VerificationForm";
 import { ChatPage } from './features/chat/pages/ChatPage';
 import RequestDetails from "./pages/RequestDetails";
+import RequestPickupPage from "./pages/RequestPickupPage";
+import ClaimedRequests from './pages/ClaimedRequests';
+
+// Chat Popup Imports
+import { ChatPopupProvider } from "./context/ChatPopupContext";
+import FloatingChatBox from "./components/layout/FloatingChatBox";
 
 // --- SECURITY WRAPPER ---
 // This intercepts the route, checks the Clerk user's role, and kicks them out if they don't match.
@@ -39,95 +45,112 @@ const RequireRole = ({ children, allowedRoles }: { children: JSX.Element, allowe
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-surface">
-      <Navbar />
+    // Wrap the entire application with ChatPopupProvider to enable global state access
+    <ChatPopupProvider>
+      <div className="min-h-screen flex flex-col font-sans bg-surface">
+        <Navbar />
 
-      <main className="flex-grow w-full max-w-7xl mx-auto px-6 py-12">
-        <Routes>
-          <Route path="/" element={
-            <>
-              <SignedOut><Home /></SignedOut>
-              <SignedIn><Navigate to="/dashboard" /></SignedIn>
-            </>
-          } />
+        <main className="flex-grow w-full max-w-7xl mx-auto px-6 py-12">
+          <Routes>
+            <Route path="/" element={
+              <>
+                <SignedOut><Home /></SignedOut>
+                <SignedIn><Navigate to="/dashboard" /></SignedIn>
+              </>
+            } />
 
-          {/* Citizen Routes */}
-          <Route path="/dashboard" element={
-            <>
-              <SignedIn><Dashboard /></SignedIn>
-              <SignedOut><RedirectToSignIn /></SignedOut>
-            </>
-          } />
+            {/* Citizen Routes */}
+            <Route path="/dashboard" element={
+              <>
+                <SignedIn><Dashboard /></SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
 
-          <Route path="/history" element={
-            <>
+            <Route path="/history" element={
+              <>
+                <SignedIn>
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <RequestHistory />
+                  </div>
+                </SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
+
+            {/* Marketplace Route */}
+            <Route path="/marketplace" element={
+              <>
+                <SignedIn><Marketplace /></SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
+
+            {/* Recycler / Admin Routes */}
+            <Route path="/fleet" element={
+              <>
+                <SignedIn>
+                  <RequireRole allowedRoles={["recycler", "admin"]}>
+                    <FleetDashboard />
+                  </RequireRole>
+                </SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
+
+            <Route path="/admin" element={
               <SignedIn>
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                  <RequestHistory />
-                </div>
-              </SignedIn>
-              <SignedOut><RedirectToSignIn /></SignedOut>
-            </>
-          } />
-
-          {/* NEW: Marketplace Route */}
-          <Route path="/marketplace" element={
-            <>
-              <SignedIn><Marketplace /></SignedIn>
-              <SignedOut><RedirectToSignIn /></SignedOut>
-            </>
-          } />
-
-          {/* Recycler / Admin Routes */}
-          <Route path="/fleet" element={
-            <>
-              <SignedIn>
-                <RequireRole allowedRoles={["recycler", "admin"]}>
-                  <FleetDashboard />
+                <RequireRole allowedRoles={["admin"]}>
+                  <AdminDashboard />
                 </RequireRole>
               </SignedIn>
-              <SignedOut><RedirectToSignIn /></SignedOut>
-            </>
-          } />
+            } />
 
-          <Route path="/admin" element={
-            <SignedIn>
-              <RequireRole allowedRoles={["admin"]}>
-                <AdminDashboard />
-              </RequireRole>
-            </SignedIn>
-          } />
+            <Route path="/verify" element={
+              <>
+                <SignedIn>
+                  <VerificationForm />
+                </SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
 
-          <Route path="/verify" element={
-            <>
-              <SignedIn>
-                <VerificationForm />
-              </SignedIn>
-              <SignedOut><RedirectToSignIn /></SignedOut>
-            </>
-          } />
+            <Route path="/chat" element={
+              <>
+                <SignedIn>
+                  <ChatPage />
+                </SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
 
-          <Route path="/chat" element={
-            <>
-              <SignedIn>
-                <ChatPage />
-              </SignedIn>
-              <SignedOut><RedirectToSignIn /></SignedOut>
-            </>
-          } />
+            <Route path="/request/:id" element={
+              <>
+                <SignedIn><RequestDetails /></SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
+            <Route path="/request-pickup" element={
+              <>
+                <SignedIn><RequestPickupPage /></SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
+            <Route path="/my-claims" element={
+              <>
+                <SignedIn><ClaimedRequests /></SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
+          </Routes>
+        </main>
 
-          <Route path="/request/:id" element={
-            <>
-              <SignedIn><RequestDetails /></SignedIn>
-              <SignedOut><RedirectToSignIn /></SignedOut>
-            </>
-          } />
-        </Routes>        
-      </main>
+        <div className="bg-white border-t border-slate-200 py-8 text-center text-sm font-medium text-slate-500 mt-auto" role="contentinfo">
+          <p>&copy; {new Date().getFullYear()} ReClaim.io - Intelligent E-Waste Logistics</p>
+        </div>
 
-      <div className="bg-white border-t border-slate-200 py-8 text-center text-sm font-medium text-slate-500 mt-auto" role="contentinfo">
-        <p>&copy; {new Date().getFullYear()} ReClaim.io - Intelligent E-Waste Logistics</p>
+        <FloatingChatBox />
       </div>
-    </div>
+    </ChatPopupProvider>
   );
 }

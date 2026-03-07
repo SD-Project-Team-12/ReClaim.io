@@ -10,7 +10,7 @@ namespace ReClaim.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Protected by Clerk JWT
+    [Authorize] 
     public class PickUpController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -82,17 +82,59 @@ namespace ReClaim.Api.Controllers
             return Ok(requests);
         }
 
-        // GET ALL PENDING ITEMS FOR MARKETPLACE
+        // GET ALL PENDING ITEMS FOR MARKETPLACE WITH PAGINATION
         [HttpGet("marketplace")]
         [Authorize]
-        public async Task<IActionResult> GetMarketplaceItems()
+        public async Task<IActionResult> GetMarketplaceItems([FromQuery] int page = 1, [FromQuery] int pageSize = 12)
         {
-            var items = await _context.PickUpRequests
-                .Where(req => req.Status == RequestStatus.Pending)
-                .OrderByDescending(req => req.CreatedAt)
+            var totalItems = await _context.PickUpRequests
+                .CountAsync(req => req.Status == RequestStatus.Pending);
+
+            var itemsQuery = from req in _context.PickUpRequests
+                             where req.Status == RequestStatus.Pending
+                             join u in _context.Users on req.CitizenId equals u.ClerkId into userGroup
+                             from user in userGroup.DefaultIfEmpty() // Left Join
+                             orderby req.CreatedAt descending
+                             select new
+                             {
+                                 req.Id,
+                                 req.Category,
+                                 req.SubCategory,
+                                 req.BrandAndModel,
+                                 req.ItemDescription,
+                                 req.Condition,
+                                 req.IsPoweringOn,
+                                 req.WeightKg,
+                                 req.PickUpAddress,
+                                 req.Latitude,
+                                 req.Longitude,
+                                 req.ImageUrls,
+                                 req.PreferredPickUpTime,
+                                 req.Status,
+                                 req.CreatedAt,
+                                 req.EstimatedValue,
+                                 req.CitizenId,
+
+                                 ClerkId = req.CitizenId,
+                                 UserDisplayName = user != null && !string.IsNullOrWhiteSpace(user.FirstName)
+                                     ? (user.FirstName + " " + (user.LastName ?? "")).Trim()
+                                     : "Seller"
+                             };
+
+            var items = await itemsQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            return Ok(items);
+            int totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+            return Ok(new
+            {
+                items = items,
+                totalPages = totalPages,
+                currentPage = page,
+                totalItems = totalItems
+            });
         }
 
         // 1. GET ALL PENDING PINS FOR THE FLEET MAP
@@ -146,10 +188,9 @@ namespace ReClaim.Api.Controllers
             var clerkId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (clerkId == null) return Unauthorized();
 
-            // Fetch requests assigned to THIS driver that are not yet Cancelled or Completed
             var assignments = await _context.PickUpRequests
-                .Where(r => r.RecyclerId == clerkId && r.Status == (RequestStatus)1) // 1 = Assigned
-                .OrderBy(r => r.PreferredPickUpTime)
+                .Where(r => r.RecyclerId == clerkId && r.Status >= (RequestStatus)1 && r.Status <= (RequestStatus)3)
+                .OrderByDescending(r => r.CreatedAt) 
                 .ToListAsync();
 
             return Ok(assignments);
