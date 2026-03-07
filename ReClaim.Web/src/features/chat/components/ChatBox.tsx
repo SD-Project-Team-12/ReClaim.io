@@ -34,16 +34,15 @@ export const ChatPage = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // ✅ Front-end sorting: Moves contact to top when a message is sent/received
     const promoteContactToTop = (targetClerkId: string) => {
         setContacts(prevContacts => {
             const index = prevContacts.findIndex(c => c.clerkId === targetClerkId);
-            if (index <= 0) return prevContacts; // Already top or not found
+            if (index <= 0) return prevContacts; 
             
             const newContacts = [...prevContacts];
             const movedContact = newContacts[index];
             newContacts.splice(index, 1);
-            newContacts.unshift(movedContact); // Push to the very top
+            newContacts.unshift(movedContact); 
             return newContacts;
         });
     };
@@ -53,8 +52,6 @@ export const ChatPage = () => {
             const token = await getToken();
             if (token) {
                 try {
-                    // ⚠️ NOTE: To have the latest chat on top on initial load, 
-                    // your backend API must return this data sorted!
                     const data = await getContacts(token);
                     setContacts(data);
                 } catch (error) {
@@ -64,7 +61,6 @@ export const ChatPage = () => {
         };
         fetchContacts();
     }, [getToken]);
-
     useEffect(() => {
         let isMounted = true;
         let currentConnection: signalR.HubConnection | null = null;
@@ -82,7 +78,7 @@ export const ChatPage = () => {
 
             currentConnection.on("ReceiveMessage", (senderId: string, message: string) => {
                 setMessages(prev => [...prev, { senderId, message }]);
-                promoteContactToTop(senderId); // Move sender to top on receive
+                promoteContactToTop(senderId); 
             });
 
             currentConnection.on("UserConnected", (connectedUserId: string) => {
@@ -175,7 +171,7 @@ export const ChatPage = () => {
                         setMessages(prev => [...prev, { senderId: userId || "", message: inputText }]);
                     }
                     
-                    promoteContactToTop(targetClerkId); // Move contact to top on send
+                    promoteContactToTop(targetClerkId); 
                 } else {
                     console.error("Image upload to Cloudinary failed.");
                 }
@@ -194,7 +190,7 @@ export const ChatPage = () => {
             setMessages(prev => [...prev, { senderId: userId || "", message: inputText }]);
             setInputText("");
             
-            promoteContactToTop(targetClerkId); // Move contact to top on send
+            promoteContactToTop(targetClerkId); 
         }
     };
 
@@ -204,7 +200,6 @@ export const ChatPage = () => {
     );
 
     return (
-        // ✅ FIX: Strict inline height and overflow-hidden guarantees the page itself CANNOT scroll.
         <div style={{ height: 'calc(100vh - 85px)' }} className="flex max-w-[1250px] mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden text-slate-dark mt-2 mb-2">
             
             {/* Left Sidebar */}
@@ -225,7 +220,6 @@ export const ChatPage = () => {
                     </div>
                 </div>
 
-                {/* ✅ FIX: min-h-0 is the Flexbox secret to making internal scrolling work without stretching the parent */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-200">
                     {filteredContacts.map((contact) => {
                         const isSelected = selectedContact?.clerkId === contact.clerkId;
@@ -258,11 +252,9 @@ export const ChatPage = () => {
                 </div>
             </div>
 
-            {/* Right Chat Area */}
             <div className="flex-1 flex flex-col bg-white relative min-w-0 h-full">
                 {selectedContact ? (
                     <>
-                        {/* Header */}
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-white/90 backdrop-blur-sm z-10 shrink-0">
                             <div className="w-10 h-10 rounded-full bg-slate-dark text-white flex items-center justify-center font-bold mr-4 shadow-sm">
                                 {selectedContact.name[0].toUpperCase()}
@@ -278,7 +270,6 @@ export const ChatPage = () => {
                             </div>
                         </div>
 
-                        {/* ✅ FIX: min-h-0 added here as well to restrict height and force internal scrolling */}
                         <div className="flex-1 min-h-0 p-6 overflow-y-auto space-y-6 bg-surface scrollbar-thin scrollbar-thumb-gray-200">
                             {messages.map((msg, index) => {
                                 const isMe = msg.senderId === userId;
@@ -308,7 +299,6 @@ export const ChatPage = () => {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input Area */}
                         <div className="p-4 bg-white border-t border-gray-100 relative shrink-0">
                             
                             {imagePreviewUrl && (
