@@ -5,7 +5,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import RequestHistory from "./features/pickup/components/RequestHistory";
 import FleetDashboard from "./features/pickup/components/FleetDashboard";
-import Marketplace from "./pages/Marketplace"; 
+import Marketplace from "./pages/Marketplace";
 import { Loader2 } from "lucide-react";
 import type { JSX } from "react";
 import AdminDashboard from "./features/admin/components/AdminDashboard";
@@ -18,6 +18,7 @@ import ChatbotPopup from './components/layout/ChatbotPopup';
 // Chat Popup Imports
 import { ChatPopupProvider } from "./context/ChatPopupContext";
 import FloatingChatBox from "./components/layout/FloatingChatBox";
+import Leaderboard from "./pages/Leaderboard";
 
 // --- SECURITY WRAPPER ---
 // This intercepts the route, checks the Clerk user's role, and kicks them out if they don't match.
@@ -139,6 +140,12 @@ export default function App() {
             <Route path="/my-claims" element={
               <>
                 <SignedIn><ClaimedRequests /></SignedIn>
+                <SignedOut><RedirectToSignIn /></SignedOut>
+              </>
+            } />
+            <Route path="/leaderboard" element={
+              <>
+                <SignedIn><Leaderboard /></SignedIn>
                 <SignedOut><RedirectToSignIn /></SignedOut>
               </>
             } />

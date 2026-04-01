@@ -32,10 +32,10 @@ const askGemini = async (prompt: string): Promise<string> => {
       contents: prompt,
     });
 
-    return response.text || "দুঃখিত, আমি কোনো উত্তর জেনারেট করতে পারিনি।";
+    return response.text || "Sorry I couldn't generate a response.";
   } catch (error) {
     console.error("Gemini SDK Error:", error);
-    return "দুঃখিত, জেমিনি এপিআই কল ফেইল করেছে। কনসোল চেক করুন।";
+    return "Sorry, the Gemini API call failed. Please check the console.";
   }
 };
 
