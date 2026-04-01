@@ -11,16 +11,19 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // Prevents default 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add CORS Policy (Registered BEFORE builder.Build)
+// 1. Add CORS Policy (Updated to include Vercel URL)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173")
+            policy.WithOrigins(
+                    "http://localhost:5173",          // For local development
+                    "https://re-claim-io.vercel.app"  // For live production
+                )
                   .AllowAnyHeader()
                   .AllowAnyMethod()
-                  .AllowCredentials();
+                  .AllowCredentials(); // Crucial for SignalR WebSockets
         });
 });
 
@@ -83,9 +86,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 return Task.CompletedTask;
             }
         };
-        
     });
-builder.Services.AddHttpClient();
+
 builder.Services.AddScoped<IPriceEstimationService, HeuristicPriceService>();
 
 var app = builder.Build();
@@ -111,8 +113,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection();
-
+// Pipeline ordering is critical: CORS must come before Auth mapping
 app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
