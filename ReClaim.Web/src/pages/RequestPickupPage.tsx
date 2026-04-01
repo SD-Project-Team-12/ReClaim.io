@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-react";
 
 export default function RequestPickupPage() {
   return (
-    <div className="w-full animate-in fade-in duration-500">
+    <div className="w-full animate-in fade-in duration-500 relative z-0">
       <div className="mb-8 border-b border-slate-200/60 pb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-emerald-50 text-emerald-600 font-semibold text-xs tracking-wide border border-emerald-100">
           <Sparkles size={14} /> AI Valuation Active

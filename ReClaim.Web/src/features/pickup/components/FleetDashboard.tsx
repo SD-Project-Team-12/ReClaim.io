@@ -314,7 +314,7 @@ export default function FleetDashboard() {
                         </button>
                     </form>
                 </div>
-                
+
                 <MapContainer
                     center={[23.8103, 90.4125]}
                     zoom={12}

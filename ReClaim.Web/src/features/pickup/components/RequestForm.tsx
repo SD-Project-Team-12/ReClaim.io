@@ -296,6 +296,7 @@ export default function RequestPickUp({ onSuccess }: RequestFormProps) {
             </div>
 
             {/* RIGHT SIDE: Interactive Map */}
+            {/* RIGHT SIDE: Interactive Map */}
             <div className="w-full lg:w-1/2 h-64 lg:h-full bg-slate-100 relative z-0">
                 {/* Floating Search Bar Overlay */}
                 <div className="absolute top-4 left-4 right-4 z-40">
@@ -320,7 +321,14 @@ export default function RequestPickUp({ onSuccess }: RequestFormProps) {
                     </form>
                 </div>
 
-                <MapContainer center={[23.8103, 90.4125]} zoom={13} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+                {/* FIX 1: Added zoomControl={false} and zIndex: 0 */}
+                <MapContainer 
+                    center={[23.8103, 90.4125]} 
+                    zoom={13} 
+                    scrollWheelZoom={false} 
+                    zoomControl={false} 
+                    style={{ height: '100%', width: '100%', zIndex: 0 }}
+                >
                     <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -329,8 +337,8 @@ export default function RequestPickUp({ onSuccess }: RequestFormProps) {
                     <MapFlyTo target={searchTarget} />
                 </MapContainer>
 
-                {/* Floating Map Instructions */}
-                <div className="absolute bottom-4 right-4 z-[1000] bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm ring-1 ring-slate-900/5 font-semibold text-slate-700 text-[10px] uppercase tracking-wide flex items-center gap-1.5 pointer-events-none">
+                {/* FIX 2: Changed z-[1000] to z-40 */}
+                <div className="absolute bottom-4 right-4 z-40 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm ring-1 ring-slate-900/5 font-semibold text-slate-700 text-[10px] uppercase tracking-wide flex items-center gap-1.5 pointer-events-none">
                     <MapIcon size={12} className="text-emerald-500" /> Click or drag to set pin
                 </div>
             </div>
