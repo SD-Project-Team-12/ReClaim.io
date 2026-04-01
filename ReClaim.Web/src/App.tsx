@@ -14,7 +14,7 @@ import { ChatPage } from './features/chat/pages/ChatPage';
 import RequestDetails from "./pages/RequestDetails";
 import RequestPickupPage from "./pages/RequestPickupPage";
 import ClaimedRequests from './pages/ClaimedRequests';
-
+import ChatbotPopup from './components/layout/ChatbotPopup';
 // Chat Popup Imports
 import { ChatPopupProvider } from "./context/ChatPopupContext";
 import FloatingChatBox from "./components/layout/FloatingChatBox";
@@ -150,6 +150,7 @@ export default function App() {
         </div>
 
         <FloatingChatBox />
+        <ChatbotPopup />
       </div>
     </ChatPopupProvider>
   );
