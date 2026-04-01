@@ -33,6 +33,21 @@ function MapFlyTo({ target }: { target: L.LatLng | null }) {
     return null;
 }
 
+const initialFormData: Partial<PickUpRequest> = {
+    category: "Computing",
+    subCategory: "General",
+    brandAndModel: "",
+    itemDescription: "No description provided",
+    condition: ItemCondition.Working,
+    weightKg: 1,
+    isPoweringOn: false,
+    pickUpAddress: "",
+    preferredPickUpTime: new Date().toISOString().slice(0, 16),
+    latitude: 23.8103,
+    longitude: 90.4125,
+    imageUrls: [],
+};
+
 export default function RequestPickUp({ onSuccess }: RequestFormProps) {
     const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
@@ -44,20 +59,7 @@ export default function RequestPickUp({ onSuccess }: RequestFormProps) {
     const [isSearching, setIsSearching] = useState(false);
     const [searchTarget, setSearchTarget] = useState<L.LatLng | null>(null);
 
-    const [formData, setFormData] = useState<Partial<PickUpRequest>>({
-        category: "Computing",
-        subCategory: "General",
-        brandAndModel: "",
-        itemDescription: "No description provided",
-        condition: ItemCondition.Working,
-        weightKg: 1,
-        isPoweringOn: false,
-        pickUpAddress: "",
-        preferredPickUpTime: new Date().toISOString().slice(0, 16),
-        latitude: 23.8103,
-        longitude: 90.4125,
-        imageUrls: [],
-    });
+    const [formData, setFormData] = useState<Partial<PickUpRequest>>(initialFormData);
 
     useEffect(() => {
         let base = formData.category === "Computing" ? 200 : 100;
@@ -127,22 +129,27 @@ export default function RequestPickUp({ onSuccess }: RequestFormProps) {
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const token = await getToken();
-            const response = await submitPickUpRequest(formData, token);
+    e.preventDefault();
+    setLoading(true);
+    try {
+        const token = await getToken();
+        const response = await submitPickUpRequest(formData, token);
 
-            if (response.ok) {
-                alert("Pickup Requested Successfully!");
-                if (onSuccess) onSuccess();
-            }
-        } catch (err) {
-            alert("Network error.");
-        } finally {
-            setLoading(false);
+        if (response.ok) {
+            alert("Pickup Requested Successfully!");
+            setFormData(initialFormData); // Wipe the form
+            setPosition(new L.LatLng(23.8103, 90.4125)); // Reset Map Pin
+            setSearchQuery(""); // Clear search bar
+            setSearchTarget(null); // Clear map target
+            
+            if (onSuccess) onSuccess();
         }
-    };
+    } catch (err) {
+        alert("Network error.");
+    } finally {
+        setLoading(false);
+    }
+};
 
     return (
         // 1. Increased height from 540px to 650px
