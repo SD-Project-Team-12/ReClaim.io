@@ -298,7 +298,7 @@ export default function RequestPickUp({ onSuccess }: RequestFormProps) {
             {/* RIGHT SIDE: Interactive Map */}
             <div className="w-full lg:w-1/2 h-64 lg:h-full bg-slate-100 relative z-0">
                 {/* Floating Search Bar Overlay */}
-                <div className="absolute top-4 left-4 right-4 z-[1000]">
+                <div className="absolute top-4 left-4 right-4 z-40">
                     <form onSubmit={handleSearch} className="flex gap-2">
                         <div className="relative flex-1">
                             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />

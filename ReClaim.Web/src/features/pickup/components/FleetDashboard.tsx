@@ -297,7 +297,7 @@ export default function FleetDashboard() {
             {/* MAP VIEW */}
             <div className="w-full lg:w-2/3 rounded-2xl overflow-hidden shadow-sm ring-1 ring-slate-200 bg-slate-50 relative">
 
-                <div className="absolute top-4 left-4 z-[1000] w-full max-w-sm pr-8 lg:pr-0">
+                <div className="absolute top-4 left-4 z-40 w-full max-w-sm pr-8 lg:pr-0">
                     <form onSubmit={handleSearch} className="flex gap-2">
                         <div className="relative flex-1">
                             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
