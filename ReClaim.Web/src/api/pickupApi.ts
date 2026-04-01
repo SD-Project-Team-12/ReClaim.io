@@ -127,3 +127,21 @@ export const getUserAnalytics = async (token: string | null) => {
   
   return response.json(); 
 };
+
+export const getMyLeaderboardRank = async (token: string | null) => {
+  if (!token) throw new Error("No authentication token found");
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  // Automatically handle if the baseUrl already has /api or not
+  const apiUrl = baseUrl.endsWith('/api') 
+    ? `${baseUrl}/leaderboard/me`
+    : `${baseUrl}/api/leaderboard/me`;
+
+  const response = await fetch(apiUrl, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  
+  if (!response.ok) throw new Error("Failed to fetch leaderboard rank");
+  
+  return response.json(); 
+};

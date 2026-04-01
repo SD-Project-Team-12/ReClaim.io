@@ -29,7 +29,7 @@ namespace ReClaim.Api.Controllers
 
             var apiKey = _configuration["GeminiApiKey"];
             if (string.IsNullOrEmpty(apiKey))
-                return StatusCode(500, new { reply = "Gemini API Key is not configured in appsettings." });
+                return StatusCode(500, new { reply = "Sorry this request could not be processed." });
 
             // 1. UPDATED URL: Using a newer, active Gemini model (2.5-flash)
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";

@@ -56,7 +56,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = clerkConfig["Authority"],
             ValidateLifetime = true,
             RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
-            ClockSkew = TimeSpan.Zero
+            ClockSkew = TimeSpan.FromMinutes(5)
         };
 
         options.Events = new JwtBearerEvents
