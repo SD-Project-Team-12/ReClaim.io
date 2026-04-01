@@ -7,7 +7,7 @@ import {
     ChevronLeft, ChevronRight, ImageOff, Truck, CheckCircle,
     ExternalLink
 } from "lucide-react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 
 // Import the new API methods you just added!
 import { getPendingRequests, claimPickUpRequest, getMyAssignments, updateRequestStatus } from "../../../api/pickupApi";
@@ -314,8 +314,14 @@ export default function FleetDashboard() {
                         </button>
                     </form>
                 </div>
-
-                <MapContainer center={[23.8103, 90.4125]} zoom={12} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+                
+                <MapContainer
+                    center={[23.8103, 90.4125]}
+                    zoom={12}
+                    scrollWheelZoom={true}
+                    zoomControl={false}
+                    style={{ height: '100%', width: '100%', zIndex: 0 }}
+                >
                     <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
 
                     {/* Render Pins based on the active tab */}
