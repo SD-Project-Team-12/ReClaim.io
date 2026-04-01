@@ -11,7 +11,8 @@ import {
   Loader2,
   Check,
   CheckCheck,
-  Sparkles, 
+  Sparkles,
+  ArrowLeft, 
 } from "lucide-react";
 import { uploadImageToCloud } from "../../../utils/uploadService";
 import { getContacts, getChatHistory } from "../../../api/chatApi";
@@ -455,10 +456,15 @@ export const ChatPage = () => {
   return (
     <div
       style={{ height: "calc(100vh - 85px)" }}
-      className="flex max-w-[1250px] mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden text-slate-dark mt-2 mb-2"
+      className="flex w-full max-w-[1250px] mx-auto bg-white md:rounded-2xl shadow-sm md:border border-gray-200 overflow-hidden text-slate-dark md:mt-2 md:mb-2"
     >
-      <div className="w-80 border-r border-gray-100 bg-surface flex flex-col z-10 h-full">
-        <div className="p-6 border-b border-gray-100 bg-white shrink-0">
+      {/* 1. SIDEBAR: Hidden on mobile if a contact is selected */}
+      <div 
+        className={`border-r border-gray-100 bg-surface flex-col z-10 h-full md:w-80 shrink-0 ${
+          selectedContact ? "hidden md:flex" : "flex w-full"
+        }`}
+      >
+        <div className="p-4 md:p-6 border-b border-gray-100 bg-white shrink-0">
           <h2 className="text-xl font-bold tracking-tight">Messages</h2>
           <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-1">
             ReClaim.io Network
@@ -524,22 +530,35 @@ export const ChatPage = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white relative min-w-0 h-full">
+      {/* 2. CHAT AREA: Hidden on mobile if NO contact is selected */}
+      <div 
+        className={`flex-col bg-white relative min-w-0 h-full flex-1 ${
+          selectedContact ? "flex w-full" : "hidden md:flex"
+        }`}
+      >
         {selectedContact ? (
           <>
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-white/90 backdrop-blur-sm z-10 shrink-0">
-              <div className="w-10 h-10 rounded-full bg-slate-dark text-white flex items-center justify-center font-bold mr-4 shadow-sm">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex items-center bg-white/90 backdrop-blur-sm z-10 shrink-0">
+              {/* MOBILE BACK BUTTON */}
+              <button 
+                onClick={() => setSelectedContact(null)}
+                className="md:hidden mr-3 p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+
+              <div className="w-10 h-10 rounded-full bg-slate-dark text-white flex items-center justify-center font-bold mr-4 shadow-sm shrink-0">
                 {selectedContact.name[0].toUpperCase()}
               </div>
-              <div>
-                <h3 className="font-bold text-base leading-tight">
+              <div className="min-w-0">
+                <h3 className="font-bold text-base leading-tight truncate">
                   {selectedContact.name}
                 </h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div
-                    className={`w-1.5 h-1.5 rounded-full ${onlineUsers.has(selectedContact.clerkId) ? "bg-emerald-primary" : "bg-gray-300"}`}
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${onlineUsers.has(selectedContact.clerkId) ? "bg-emerald-primary" : "bg-gray-300"}`}
                   ></div>
-                  <span className="text-xs text-gray-500 font-medium">
+                  <span className="text-xs text-gray-500 font-medium truncate">
                     {onlineUsers.has(selectedContact.clerkId)
                       ? "Active now"
                       : "Offline"}
@@ -548,7 +567,7 @@ export const ChatPage = () => {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 p-6 overflow-y-auto space-y-6 bg-surface scrollbar-thin scrollbar-thumb-gray-200">
+            <div className="flex-1 min-h-0 p-4 md:p-6 overflow-y-auto space-y-6 bg-surface scrollbar-thin scrollbar-thumb-gray-200">
               {messages.map((msg, index) => {
                 const isMe = msg.senderId === userId;
                 const isBot = msg.senderId === "GEMINI_BOT"; 
@@ -566,7 +585,7 @@ export const ChatPage = () => {
                     className={`flex ${isMe ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[70%]`}
+                      className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[85%] md:max-w-[70%]`}
                     >
                       {isBot && (
                         <div className="flex items-center gap-1 mb-1 ml-1 text-xs font-bold text-indigo-600 uppercase tracking-widest">
@@ -581,11 +600,11 @@ export const ChatPage = () => {
                           <img
                             src={imageUrl}
                             alt="attachment"
-                            className="max-w-full max-h-72 object-cover rounded-xl cursor-zoom-in hover:opacity-95 transition-opacity"
+                            className="max-w-full max-h-60 md:max-h-72 object-cover rounded-xl cursor-zoom-in hover:opacity-95 transition-opacity"
                             onClick={() => window.open(imageUrl, "_blank")}
                           />
                         ) : (
-                          <p className="leading-relaxed whitespace-pre-wrap">
+                          <p className="leading-relaxed whitespace-pre-wrap break-words">
                             {renderMessageWithBold(msg.message, isMe)}
                           </p>
                         )}
@@ -625,14 +644,14 @@ export const ChatPage = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 bg-white border-t border-gray-100 relative shrink-0">
+            <div className="p-3 md:p-4 bg-white border-t border-gray-100 relative shrink-0 pb-safe">
               {imagePreviewUrl && (
-                <div className="absolute bottom-[calc(100%+16px)] left-6 right-6 bg-white border border-gray-200 p-4 rounded-xl shadow-lg flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2">
-                  <div className="relative">
+                <div className="absolute bottom-[calc(100%+8px)] left-2 right-2 md:left-6 md:right-6 bg-white border border-gray-200 p-3 md:p-4 rounded-xl shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="relative shrink-0">
                     <img
                       src={imagePreviewUrl}
                       alt="preview"
-                      className={`w-16 h-16 rounded-lg object-cover border-2 border-emerald-primary ${isUploading ? "opacity-50" : "opacity-100"}`}
+                      className={`w-14 h-14 md:w-16 md:h-16 rounded-lg object-cover border-2 border-emerald-primary ${isUploading ? "opacity-50" : "opacity-100"}`}
                     />
                     {!isUploading && (
                       <button
@@ -648,20 +667,20 @@ export const ChatPage = () => {
                       </button>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600 font-medium">
+                  <div className="text-xs md:text-sm text-gray-600 font-medium">
                     {isUploading ? (
                       <span className="flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-emerald-primary" />{" "}
-                        Uploading securely...
+                        <Loader2 className="w-4 h-4 animate-spin text-emerald-primary shrink-0" />{" "}
+                        Uploading...
                       </span>
                     ) : (
-                      "Image attached. Add a caption or send."
+                      "Image attached."
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="flex items-end gap-2 bg-surface p-2 rounded-2xl border border-gray-200 focus-within:border-emerald-primary/50 focus-within:ring-2 focus-within:ring-emerald-primary/10 transition-all">
+              <div className="flex items-end gap-1.5 md:gap-2 bg-surface p-1.5 md:p-2 rounded-2xl border border-gray-200 focus-within:border-emerald-primary/50 focus-within:ring-2 focus-within:ring-emerald-primary/10 transition-all">
                 <input
                   type="file"
                   accept="image/*"
@@ -674,7 +693,7 @@ export const ChatPage = () => {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className={`p-3 text-gray-400 hover:text-emerald-primary hover:bg-emerald-primary/10 rounded-xl transition-colors ${isUploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  className={`p-2.5 md:p-3 text-gray-400 hover:text-emerald-primary hover:bg-emerald-primary/10 rounded-xl transition-colors shrink-0 ${isUploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                 >
                   <Paperclip className="w-5 h-5" />
                 </button>
@@ -689,11 +708,11 @@ export const ChatPage = () => {
                     }
                   }}
                   placeholder={
-                    selectedImage ? "Add a caption..." : "Write a message..."
+                    selectedImage ? "Caption..." : "Message..."
                   }
                   disabled={isUploading}
                   rows={1}
-                  className="flex-1 max-h-32 bg-transparent border-none focus:ring-0 resize-none py-3 text-sm outline-none placeholder:text-gray-400 min-h-[44px]"
+                  className="flex-1 max-h-24 md:max-h-32 bg-transparent border-none focus:ring-0 resize-none py-2.5 md:py-3 text-sm outline-none placeholder:text-gray-400 min-h-[40px] md:min-h-[44px]"
                 />
 
                 <button
@@ -701,7 +720,7 @@ export const ChatPage = () => {
                   disabled={
                     isUploading || (!selectedImage && inputText.trim() === "")
                   }
-                  className={`p-3 rounded-xl flex items-center justify-center transition-all ${
+                  className={`p-2.5 md:p-3 rounded-xl flex items-center justify-center transition-all shrink-0 ${
                     isUploading || (!selectedImage && inputText.trim() === "")
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-emerald-primary text-white hover:bg-emerald-hover shadow-sm hover:shadow-md"
@@ -717,7 +736,7 @@ export const ChatPage = () => {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+          <div className="flex-1 hidden md:flex flex-col items-center justify-center text-center p-8">
             <div className="w-16 h-16 bg-emerald-primary/10 text-emerald-primary rounded-2xl flex items-center justify-center mb-4">
               <ImageIcon className="w-8 h-8" />
             </div>
