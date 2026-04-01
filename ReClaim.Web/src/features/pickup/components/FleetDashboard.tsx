@@ -315,7 +315,7 @@ export default function FleetDashboard() {
                     </form>
                 </div>
 
-                <MapContainer center={[23.8103, 90.4125]} zoom={12} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                <MapContainer center={[23.8103, 90.4125]} zoom={12} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 0 }}>
                     <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
 
                     {/* Render Pins based on the active tab */}
