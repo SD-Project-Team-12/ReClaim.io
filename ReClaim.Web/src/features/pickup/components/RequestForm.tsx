@@ -325,7 +325,7 @@ export default function RequestPickUp({ onSuccess }: RequestFormProps) {
                 <MapContainer 
                     center={[23.8103, 90.4125]} 
                     zoom={13} 
-                    scrollWheelZoom={false} 
+                    scrollWheelZoom={true} 
                     zoomControl={false} 
                     style={{ height: '100%', width: '100%', zIndex: 0 }}
                 >
