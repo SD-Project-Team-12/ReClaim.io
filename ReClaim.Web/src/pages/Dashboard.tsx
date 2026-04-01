@@ -3,18 +3,18 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { 
   Wallet, Leaf, Package, ArrowRight, MessageSquare, 
-  Sparkles, Store, Clock, Loader2, ImageOff, 
-  TrendingUp, DollarSign, MapPin 
+  Store, Clock, Loader2, ImageOff, 
+  TrendingUp, DollarSign, MapPin, Trophy 
 } from "lucide-react";
-import { motion} from "framer-motion"; 
+import { motion } from "framer-motion"; 
 import type { Variants } from "framer-motion";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer 
 } from "recharts";
 
-import RequestPickUp from "../features/pickup/components/RequestForm";
-import { getMyRequests, getUserAnalytics } from "../api/pickupApi"; 
+// IMPORT YOUR NEW API CALL HERE
+import { getMyRequests, getUserAnalytics, getMyLeaderboardRank } from "../api/pickupApi"; 
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -55,15 +55,20 @@ export default function Dashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalWeight: 0, totalEarnings: 0 });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  
+  // NEW STATE FOR RANK
+  const [rankStats, setRankStats] = useState({ rank: "-", points: 0, hasCompletedPickups: false });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const token = await getToken();
         if (token) {
-          const [analyticsRes, requestsRes] = await Promise.all([
+          // ADD RANK TO THE PARALLEL FETCH
+          const [analyticsRes, requestsRes, rankRes] = await Promise.all([
             getUserAnalytics(token).catch(() => ({ totalWeight: 0, totalEarnings: 0, graphData: [] })),
-            getMyRequests(token).catch(() => [])
+            getMyRequests(token).catch(() => []),
+            getMyLeaderboardRank(token).catch(() => ({ rank: "-", points: 0, hasCompletedPickups: false }))
           ]);
 
           setStats({
@@ -72,6 +77,7 @@ export default function Dashboard() {
           });
           setMonthlyData(analyticsRes.graphData || []);
           setRequests(requestsRes || []);
+          setRankStats(rankRes || { rank: "-", points: 0, hasCompletedPickups: false });
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -117,13 +123,32 @@ export default function Dashboard() {
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-12">
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* TOP STAT CARDS - Changed to grid-cols-4 for large screens to fit the new widget */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          
+          {/* NEW GREEN POINTS WIDGET */}
+          <motion.div variants={itemVariants} className="group relative bg-gradient-to-br from-emerald-500 to-teal-700 p-6 rounded-[2rem] shadow-sm hover:shadow-xl ring-1 ring-slate-900/5 transition-all duration-300 overflow-hidden text-white">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-colors"></div>
+            <div className="relative">
+              <div className="flex items-center gap-3 text-emerald-100 font-bold uppercase text-xs tracking-widest mb-4">
+                <div className="p-2 bg-white/20 text-white rounded-xl group-hover:scale-110 group-hover:rotate-6 transition-transform"><Trophy size={18} /></div> 
+                Green Points
+              </div>
+              <div className="text-4xl font-black flex items-baseline gap-1 tracking-tight">
+                {rankStats.points.toLocaleString()} <span className="text-xl font-semibold text-emerald-200">Pts</span>
+              </div>
+              <Link to="/leaderboard" className="text-xs font-bold mt-3 flex items-center gap-1 bg-white/20 hover:bg-white/30 w-max px-3 py-1.5 rounded-lg transition-colors backdrop-blur-md">
+                {rankStats.hasCompletedPickups ? `Global Rank: #${rankStats.rank}` : "Join the Leaderboard"} <ArrowRight size={14}/>
+              </Link>
+            </div>
+          </motion.div>
+
           <motion.div variants={itemVariants} className="group relative bg-gradient-to-br from-white to-slate-50 p-6 rounded-[2rem] shadow-sm hover:shadow-xl ring-1 ring-slate-900/5 hover:ring-emerald-500/30 transition-all duration-300 overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-colors"></div>
             <div className="relative">
               <div className="flex items-center gap-3 text-slate-500 font-bold uppercase text-xs tracking-widest mb-4">
                 <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl group-hover:scale-110 group-hover:rotate-3 transition-transform"><Wallet size={18} /></div> 
-                Total Transaction
+                Total Earnings
               </div>
               <div className="text-4xl font-black text-slate-900 flex items-baseline gap-1 tracking-tight">
                 <span className="text-2xl text-slate-400 font-semibold">৳</span>{stats.totalEarnings.toLocaleString()}
