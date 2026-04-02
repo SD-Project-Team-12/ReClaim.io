@@ -346,5 +346,14 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 ---
 
 <div align="center">
-  Developed by SD Project Team 12
+ 
+Developed by 
+ 
+| Student ID | Name |
+|---|---|
+| 20220204060 | Md. Sakibul Hassan |
+| 20220204062 | Mohammad Rafid Ahad |
+| 20220204067 | Md. Iftekhar Zawad |
+| 20220204071 | Ariful Islam Nipun |
+ 
 </div>
